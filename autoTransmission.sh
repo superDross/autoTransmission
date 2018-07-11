@@ -129,10 +129,10 @@ remove_torrents() {
 		if [ "$downloaded" != "" ]; then
 			transmission-remote  -t $torrent_id --remove
 			echo "$torrent_name successfully downloaded "
-			echo -e "$(log_date): Removing $torrent_name from torrent list... \n"
+			echo "$(log_date): Removing $torrent_name from torrent list"
 		elif [ "$stopped" != "" ]; then
 			transmission-remote -t $torrent_id -s
-			echo -e "$(log_date): Restarting $torrent_name ...... \n"
+			echo $(log_date): Restarting $torrent_name
 		fi
 	done
 }
