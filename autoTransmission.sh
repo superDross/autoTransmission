@@ -38,7 +38,6 @@ while [[ $# -gt 0 ]]; do
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
 	  -p|--ip_site) SITE="$2"; shift ;;
 	  -o|--vpn_dir) OPENVPN="$2"; shift ;;
-      --no-sams) SAM_GENERATION="NO" ;;
       *) echo -e "Unknown argument:\t$arg"; exit 0 ;;
     esac
 
@@ -67,18 +66,17 @@ fi
 
 # The directory in which this script resides
 HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-LOG=${HERE}/autoTransmission.log
+LOG=${HERE}/log/autoTransmission.log
 
 
 delete_old() { 
-    
     # delete files from directory containing torrent/magnets that are older than 72 hours
     find $TORRENT_DIR -type f -mmin +4320 -exec rm {} \;
 }
 
 
-# NOTE: requires sudo.
 init_VPN() {
+	# NOTE: requires sudo.
 	pkill openvpn
 	
 	HOME_IP=$(curl $SITE)
@@ -97,7 +95,6 @@ init_VPN() {
 
 
 add_torrents() {
-
     # add all torrents & magnets in a given dir to transmission, then delete said file 
     for torrent_file in ${TORRENT_DIR}/*; do
         
@@ -114,13 +111,12 @@ add_torrents() {
         fi
 
 		echo "$(log_date): Deleting $(basename $torrent_file)"
-        #rm $torrent_file
+        rm $torrent_file
     done
 }
 
 
 remove_torrents() {
-    
     # list all torrents, remove first & last line and first space on every line 
     # and use cut to get first field from each line
     TORRENTLIST=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
@@ -148,7 +144,10 @@ remove_torrents() {
 
 
 autoTransmission() {
-	# inititiate VPN
+	# construct log dir and file
+	mkdir -p ${HERE}/log
+	touch $LOG
+	# inititiate VPN if --vpn_dir arg given
 	if [ ! -z $OPENVPN ]; then
 		init_VPN
 	fi
@@ -169,7 +168,6 @@ autoTransmission() {
 		pkill openvpn
 	fi
 }
-
 
 
 autoTransmission | tee $LOG
