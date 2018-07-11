@@ -9,14 +9,14 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	Add torrents files to transmission and downoads data for a predetermined time period.
 
 	required arguments:
-		-t, --torrent_dir		  path to directory containing torrent/magnet files
+	  -t, --torrent_dir      path to directory containing torrent/magnet files
 	optional arguments:
-		-d, --download_dir		 path to download data to, default=\$HOME/Downloads
-		-s, --sleep				the amount of time to download, default=6h
-		-p, --ip_site			  website to scrape IP address from, --ip_site=http://ipecho.net/plain
-		-o, --vpn_dir			  directory containing ovpn and certificate files for VPN initiation
+	  -d, --download_dir     path to download data to, default=\$HOME/Downloads
+	  -s, --sleep            the amount of time to download, default=6h
+	  -p, --ip_site          website to scrape IP address from, --ip_site=http://ipecho.net/plain
+	  -o, --vpn_dir          directory containing ovpn and certificate files for VPN initiation
 	other:
-		--help					 print this help page 
+	  --help               print this help page 
 	EOF
 	exit 0
 fi
@@ -81,10 +81,10 @@ delete_old() {
 init_VPN() {
 	# NOTE: requires sudo.
 	pkill openvpn
-	
 	HOME_IP=$(curl $SITE)
 	echo "$(log_date): Home IP: $HOME_IP"
-	
+	# if the IP address is the same as HOME_IP then connect to VPN.
+	# check every 30 minutes
 	while [ "true" ]; do
 		CURRENT_IP=$(curl $SITE)	
 		if [ $HOME_IP = $CURRENT_IP ]; then
@@ -92,7 +92,7 @@ init_VPN() {
 			sudo openvpn ${OPENVPN}/*.ovpn &
 			echo "$(log_date): Connected IP: $(curl $SITE)"
 		fi
-		sleep 30
+		sleep 30m
 	done
 }
 
@@ -120,24 +120,20 @@ remove_torrents() {
 	# and use cut to get first field from each line
 	TORRENTLIST=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
 			cut --only-delimited --delimiter \  --fields 1)
-	
 	# remove downloaded torrents and restart 'Stopped' torrents
 	for torrent_id in $TORRENTLIST; do
 		torrent_info=$(transmission-remote -t $torrent_id --info)
 		downloaded=$(echo $torrent_info | grep "Percent Done: 100%")
 		stopped=$(echo $torrent_info | grep "State: Stopped")
 		torrent_name=$(echo $torrent_info | grep Name | cut -d : -f 2)
-		
 		if [ "$downloaded" != "" ]; then
 			transmission-remote  -t $torrent_id --remove
 			echo "$torrent_name successfully downloaded "
 			echo -e "$(log_date): Removing $torrent_name from torrent list... \n"
-
 		elif [ "$stopped" != "" ]; then
 			transmission-remote -t $torrent_id -s
 			echo -e "$(log_date): Restarting $torrent_name ...... \n"
 		fi
-
 	done
 }
 
@@ -152,7 +148,7 @@ autoTransmission() {
 		init_VPN
 	fi
 	# delete torrent/magnet files
-	delete_old
+	# delete_old
 	# start daemon and specify a dir to download data to 
 	transmission-daemon -w $DOWNLOAD_DIR
 	sleep 10
