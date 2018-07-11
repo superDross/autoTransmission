@@ -4,7 +4,7 @@
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
-	usage:  [-h] [-t DIR] [-d DIR] [-s STRING] [-p STRING] [-o DIR ]
+	Usage:  autoTransmission.sh [-h] [-t DIR] [-d DIR] [-s STRING] [-p STRING] [-o DIR ]
 
 	Add torrents files to transmission and downoads data for a predetermined time period.
 
@@ -28,6 +28,12 @@ log_date() {
 }
 
 
+# VARIABLES
+CMD=$(echo autoTransmission.sh $@)
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+LOG=${HERE}/log/autoTransmission.log
+
+
 # ARGUMENT PARSER 
 while [[ $# -gt 0 ]]; do
     arg="$1"
@@ -43,6 +49,7 @@ while [[ $# -gt 0 ]]; do
 
     shift
 done
+
 
 # COMPULSORY ARGS
 if [ -z $TORRENT_DIR ]; then
@@ -64,10 +71,8 @@ if [ -z $DOWNLOAD_DIR ]; then
 	DOWNLOAD_DIR=${HOME}/Downloads/
 fi
 
-# The directory in which this script resides
-HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-LOG=${HERE}/log/autoTransmission.log
 
+# FUNCTIONS
 
 delete_old() { 
     # delete files from directory containing torrent/magnets that are older than 72 hours
@@ -100,7 +105,7 @@ add_torrents() {
         
         if [ ${torrent_file: -8} == ".torrent" ]; then
 	        transmission-remote  -a $torrent_file 
-			echo "$(log_date): Adding $torrent_file."
+			echo "$(log_date): Adding $(basename $torrent_file)."
 
         elif [ ${torrent_file: -7} == ".magnet" ]; then
 	        transmission-remote -a `cat $torrent_file`
@@ -144,6 +149,7 @@ remove_torrents() {
 
 
 autoTransmission() {
+	echo $CMD
 	# construct log dir and file
 	mkdir -p ${HERE}/log
 	touch $LOG
@@ -167,6 +173,7 @@ autoTransmission() {
 	if [ ! -z $OPENVPN ]; then
 		pkill openvpn
 	fi
+	echo "$(log_date): autoTransmission Complete!"
 }
 
 

@@ -34,7 +34,8 @@ done
 HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 
-# CRONTAB alteration only if --time given
+# CRONTAB 
+# crontab file alteration only if --time arg is parsed
 if [ ! -z $TIME ]; then
 	HOUR=$(echo $TIME | cut -d : -f 1)
 	MINUTES=$(echo $TIME | cut -d : -f 2)
@@ -44,5 +45,10 @@ if [ ! -z $TIME ]; then
 fi
 
 
+# AUTHENTICATION
 # change the transmission settings to not require authorisation
 sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' /etc/transmission-daemon/settings.json
+
+
+# BASH ALIAS
+echo alias autoTransmission="${HERE}/autoTransmission.sh" >> ${HOME}/.bashrc

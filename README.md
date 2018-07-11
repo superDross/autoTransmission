@@ -32,3 +32,4 @@ You can schedule this script to run everyday by editing the below cron command a
 ```
 ### Transmission Authentication
 If you dont want to run this script then you will have to alter the /etc/transmission-daemon/settings.json file. Change the `/etc/transmission-daemon/settings.json` to `rpc-authentication-required: false`.
+
