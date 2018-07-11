@@ -10,9 +10,9 @@ Add and download torrent files for 8 hours.
 ```bash
 ./autoTransmission.sh --torrent_dir ~/torrent_files/ --sleep 8h
 ```
-Connect to a VPN while adding and downloading torrent files.
+Connect to a VPN while adding and downloading torrent files (requires root).
 ```bash
-./autoTransmission.sh --torrent_dir ~/torrent_fles/ --vpn_dir ~/open_vpn_files/
+sudo ./autoTransmission.sh --torrent_dir ~/torrent_fles/ --vpn_dir ~/open_vpn_files/
 ```
 
 ## Setup
@@ -26,10 +26,10 @@ cert /path/to/client.crt
 key /path/to/client.key
 ```
 ### Scheduling
-You can schedule this script to run everyday by editing the below cron command and placing it in `crontab -e`.
+You can schedule this script to run everyday by editing the below cron command and placing it into your crontab file with `crontab -e`.
 ```
 45 23 * * * ${HOME}/.profile; .  ${HOME}/.bashrc; ${HOME}/bin/autoTransmission.sh --torrent_dir <dir> --download_dir <dir>
 ```
 ### Transmission Authentication
-If you dont want to run this script then you will have to alter the /etc/transmission-daemon/settings.json file. Change the `/etc/transmission-daemon/settings.json` to `rpc-authentication-required: false`.
+If you dont want to run this script then you will have to alter the /etc/transmission-daemon/settings.json file. In the file `/etc/transmission-daemon/settings.json` change `rpc-authentication-required: true`to `rpc-authentication-required: false`.
 
