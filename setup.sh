@@ -47,7 +47,7 @@ fi
 
 # AUTHENTICATION
 # change the transmission settings to not require authorisation
-sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' /etc/transmission-daemon/settings.json
+sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' ${HOME}/.config/transmission-daemon/settings.json
 
 
 # BASH ALIAS
