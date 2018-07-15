@@ -1,4 +1,5 @@
 #!/bin/bash
+# autoTransmission.sh: Automate transmissin management and scheduling.
 
 # NOTE: Add an option to implement the django ting
 # HELP PAGE
@@ -13,6 +14,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	optional arguments:
 	  -d, --download_dir     path to download data to, default=\$HOME/Downloads
 	  -s, --sleep            the amount of time to download, default=6h
+	  -c, --scheduler        time to initiate autoTransmission, permenantely adds to your crontab.
 	  -p, --ip_site          website to scrape IP address from, --ip_site=http://ipecho.net/plain
 	  -o, --vpn_dir          directory containing ovpn and certificate files for VPN initiation
 	  -a, --args             args/options to parse to transmission-remote
@@ -30,7 +32,7 @@ log_date() {
 
 
 # VARIABLES
-CMD=$(echo autoTransmission.sh $@)
+CMD="$@"
 HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 LOG=${HERE}/log/autoTransmission.log
 
@@ -41,6 +43,7 @@ while [[ $# -gt 0 ]]; do
 	case $arg in 
 	  -d|--download_dir) DOWNLOAD_DIR="$2"; shift ;;
 	  -s|--sleep) SLEEP="$2"; shift ;;
+	  -c|--scheduler) TIME="$2"; shift ;;
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
 	  -p|--ip_site) SITE="$2"; shift ;;
 	  -o|--vpn_dir) OPENVPN="$2"; shift ;;
@@ -75,6 +78,46 @@ fi
 
 # FUNCTIONS
 
+scheduler() {
+	# schedules time to execute autoTransmission everyday
+	if [ ! -z $TIME ]; then
+		HOUR=$(echo $TIME | cut -d : -f 1)
+		MINUTES=$(echo $TIME | cut -d : -f 2)
+		BASH_FILES="${HOME}/.profile; .  ${HOME}/.bashrc;" 
+		# remove the --scheduler arg from the command
+		COMMAND=$(echo "$CMD" |  sed 's/\(-c\|--scheduler\) [0-9]*:[0-9]*\ //g')
+		# extract the autoTransmission commands and times currently within crontab file
+		CURRENT_ENTRIES=$(crontab -l | grep auto)
+		CURRENT_COMMAND=$(echo $CURRENT_ENTRIES | cut -d ' ' -f6-)
+		CURRENT_COMMAND_TIME=$(echo $CURRENT_ENTRIES | cut -d ' ' -f-2)
+		# exit if autoTransmisison aleady scheduled for the given time
+		if [[ "$MINUTES $HOUR" = $CURRENT_COMMAND_TIME ]]; then
+			echo $(log_date): autoTransmission is already scheduled for this time
+			exit 1
+		# only add transmission command if it isn't present within crontab already
+		elif [[ $CURRENT_COMMAND != *"${HERE}/autoTransmission.sh ${COMMAND}"* ]]; then
+			echo $(log_date): Updating crontab
+			CRONTAB_COMMAND="$MINUTES $HOUR * * * $BASH_FILES ${HERE}/autoTransmission.sh $COMMAND"
+			(crontab -l ; echo "$CRONTAB_COMMAND") | uniq | crontab -
+		else
+			echo $(log_date): command already written to crontab file
+			exit 1
+		fi
+		exit 0
+	fi
+}
+
+
+startup_app() {
+	# construct log dir and file and start transmission
+	echo $(log_date): ${HERE}/autoTransmission.sh $CMD
+	mkdir -p ${HERE}/log
+	touch $LOG
+	transmission-daemon -w $DOWNLOAD_DIR
+	sleep 10
+}
+
+
 delete_old() { 
 	# delete files from directory containing torrent/magnets that are older than 72 hours
 	find $TORRENT_DIR -type f -mmin +4320 -exec rm {} \;
@@ -84,12 +127,13 @@ delete_old() {
 # NOTE: this should be a seperate app
 init_VPN() {
 	# NOTE: requires sudo.
-	pkill openvpn
-	HOME_IP=$(curl $SITE)
-	echo "$(log_date): Home IP: $HOME_IP"
-	# if the IP address is the same as HOME_IP then connect to VPN.
-	# check every 30 minutes
-	while [ "true" ]; do
+	if [ ! -z $OPENVPN ]; then
+		pkill openvpn
+		HOME_IP=$(curl $SITE)
+		echo "$(log_date): Home IP: $HOME_IP"
+		# if the IP address is the same as HOME_IP then connect to VPN.
+		# check every 30 minutes
+		while [ "true" ]; do
 		CURRENT_IP=$(curl $SITE)	
 		if [ $HOME_IP = $CURRENT_IP ]; then
 			echo "$(log_date): Initiating VPN"
@@ -97,7 +141,8 @@ init_VPN() {
 			echo "$(log_date): Connected IP: $(curl $SITE)"
 		fi
 		sleep 30m
-	done
+		done
+	fi
 }
 
 
@@ -119,10 +164,19 @@ add_torrents() {
 }
 
 
-pasre_transission_commands() {
+parse_transmission_commands() {
 	# parse --args arguments to transmission-remote
-	transmission-remote $ARGS
+	if [ ! -z $ARGS ]; then
+		echo $(log_date): parsing transmission remote commands
+		transmission-remote $ARGS
+	fi
 }
+
+
+download_time() {
+	echo $(log_date): downloading for $SLEEP
+	sleep $SLEEP
+}	
 
 
 remove_torrents() {
@@ -138,7 +192,7 @@ remove_torrents() {
 		torrent_name=$(echo $torrent_info | grep Name | cut -d : -f 2)
 		if [ "$downloaded" != "" ]; then
 			transmission-remote  -t $torrent_id --remove
-			echo "$torrent_name successfully downloaded "
+			echo "$(log_date): $torrent_name successfully downloaded "
 			echo "$(log_date): Removing $torrent_name from torrent list"
 		elif [ "$stopped" != "" ]; then
 			transmission-remote -t $torrent_id -s
@@ -148,30 +202,28 @@ remove_torrents() {
 }
 
 
-autoTransmission() {
-	echo $CMD
-	# construct log dir and file
-	mkdir -p ${HERE}/log
-	touch $LOG
-	# inititiate VPN if --vpn_dir arg given
-	if [ ! -z $OPENVPN ]; then
-		init_VPN
-	fi
-	# start daemon and specify a dir to download data to 
-	transmission-daemon -w $DOWNLOAD_DIR
-	sleep 10
-	# add all torrent/magnet files to transmission then parse additional args
-	add_torrents
-	parse_transmission_commands
-	sleep $SLEEP
-	# remove completly downloaded torrents and restart stopped torrents
-	remove_torrents
-	# exit transmission
+exit_transmission() {
 	transmission-remote --exit
-	# kill VPN connection
+}
+
+
+kill_vpn() {
 	if [ ! -z $OPENVPN ]; then
 		pkill openvpn
 	fi
+}
+
+
+autoTransmission() {
+	scheduler
+	startup_app
+	init_VPN
+	add_torrents
+	parse_transmission_commands
+	download_time
+	remove_torrents
+	exit_transmission
+	kill_vpn
 	echo "$(log_date): autoTransmission Complete!"
 }
 
