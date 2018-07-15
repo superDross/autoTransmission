@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+# NOTE: Add an option to implement the django ting
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
@@ -15,8 +15,9 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	  -s, --sleep            the amount of time to download, default=6h
 	  -p, --ip_site          website to scrape IP address from, --ip_site=http://ipecho.net/plain
 	  -o, --vpn_dir          directory containing ovpn and certificate files for VPN initiation
+	  -a, --args             args/options to parse to transmission-remote
 	other:
-	  --help               print this help page 
+	  --help                 print this help page 
 	EOF
 	exit 0
 fi
@@ -43,6 +44,7 @@ while [[ $# -gt 0 ]]; do
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
 	  -p|--ip_site) SITE="$2"; shift ;;
 	  -o|--vpn_dir) OPENVPN="$2"; shift ;;
+	  -a|--args) ARGS="${@:2}"; shift ;;
 	  *) echo -e "Unknown argument:\t$arg"; exit 0 ;;
 	esac
 	shift
@@ -54,6 +56,7 @@ if [ -z $TORRENT_DIR ]; then
 	echo "--torrent_dir is compulsory"
 	exit 1
 fi
+
 
 # DEFAULT VALUES
 if [ -z $SLEEP ]; then
@@ -78,6 +81,7 @@ delete_old() {
 }
 
 
+# NOTE: this should be a seperate app
 init_VPN() {
 	# NOTE: requires sudo.
 	pkill openvpn
@@ -115,6 +119,12 @@ add_torrents() {
 }
 
 
+pasre_transission_commands() {
+	# parse --args arguments to transmission-remote
+	transmission-remote $ARGS
+}
+
+
 remove_torrents() {
 	# list all torrents, remove first & last line and first space on every line 
 	# and use cut to get first field from each line
@@ -147,13 +157,12 @@ autoTransmission() {
 	if [ ! -z $OPENVPN ]; then
 		init_VPN
 	fi
-	# delete torrent/magnet files
-	# delete_old
 	# start daemon and specify a dir to download data to 
 	transmission-daemon -w $DOWNLOAD_DIR
 	sleep 10
-	# add all torrent/magnet files to transmission
+	# add all torrent/magnet files to transmission then parse additional args
 	add_torrents
+	parse_transmission_commands
 	sleep $SLEEP
 	# remove completly downloaded torrents and restart stopped torrents
 	remove_torrents
