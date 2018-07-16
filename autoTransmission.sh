@@ -1,7 +1,9 @@
 #!/bin/bash
 # autoTransmission.sh: Automate transmissin management and scheduling.
+# NOTE: Add an option to implement the website django thing
+# NOTE: remove VPN stuff and create a seperate app
 
-# NOTE: Add an option to implement the django ting
+
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
@@ -48,10 +50,23 @@ while [[ $# -gt 0 ]]; do
 	  -p|--ip_site) SITE="$2"; shift ;;
 	  -o|--vpn_dir) OPENVPN="$2"; shift ;;
 	  -a|--args) ARGS="${@:2}"; shift ;;
-	  *) echo -e "Unknown argument:\t$arg"; exit 0 ;;
+	  #*) echo -e "Unknown argument:\t$arg"; exit 0 ;;
 	esac
 	shift
 done
+
+
+# ERROR CHECKING
+# Exit if the last argument given is not --args|-a
+if [[ $CMD = *"--args"* || $CMD = *"-a"* ]]; then
+	ALL_ARGS="\-d\|-s\|-c\|-t\|-p\|-o\|-a\|--args\|--vpn_dir\|--ip_site\|--torrent_dir\|--scheduler\|--sleep\|--download_dir"
+	ARGUMENTS=$(echo $CMD | grep $ALL_ARGS -o)
+	LAST_ARG=$(echo $ARGUMENTS | awk '{print $NF}')
+	if [[ $LAST_ARG != "--args" && $LAST_ARG != "-a" ]]; then
+		echo $(date): --args/-a must be the last argument given.
+		exit 1
+	fi
+fi
 
 
 # COMPULSORY ARGS
@@ -77,7 +92,6 @@ fi
 
 
 # FUNCTIONS
-
 scheduler() {
 	# schedules time to execute autoTransmission everyday
 	if [ ! -z $TIME ]; then
@@ -124,7 +138,6 @@ delete_old() {
 }
 
 
-# NOTE: this should be a seperate app
 init_VPN() {
 	# NOTE: requires sudo.
 	if [ ! -z $OPENVPN ]; then
@@ -166,7 +179,7 @@ add_torrents() {
 
 parse_transmission_commands() {
 	# parse --args arguments to transmission-remote
-	if [ ! -z $ARGS ]; then
+	if [[ ! -z $ARGS ]]; then
 		echo $(log_date): parsing transmission remote commands
 		transmission-remote $ARGS
 	fi
@@ -203,6 +216,7 @@ remove_torrents() {
 
 
 exit_transmission() {
+	echo $(date): exiting transmission.
 	transmission-remote --exit
 }
 
