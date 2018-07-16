@@ -193,13 +193,11 @@ exit_transmission() {
 autoTransmission() {
 	scheduler
 	startup_app
-	init_VPN
 	add_torrents
 	parse_transmission_commands
 	download_time
 	remove_torrents
 	exit_transmission
-	kill_vpn
 	echo "$(log_date): autoTransmission Complete!"
 }
 
