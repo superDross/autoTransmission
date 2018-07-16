@@ -1,7 +1,6 @@
 #!/bin/bash
 # autoTransmission.sh: Automate transmissin management and scheduling.
 # NOTE: Add an option to implement the website django thing
-# NOTE: remove VPN stuff and create a seperate app
 
 
 # HELP PAGE
@@ -17,8 +16,6 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	  -d, --download_dir     path to download data to, default=\$HOME/Downloads
 	  -s, --sleep            the amount of time to download, default=6h
 	  -c, --scheduler        time to initiate autoTransmission, permenantely adds to your crontab.
-	  -p, --ip_site          website to scrape IP address from, --ip_site=http://ipecho.net/plain
-	  -o, --vpn_dir          directory containing ovpn and certificate files for VPN initiation
 	  -a, --args             args/options to parse to transmission-remote
 	other:
 	  --help                 print this help page 
@@ -47,8 +44,6 @@ while [[ $# -gt 0 ]]; do
 	  -s|--sleep) SLEEP="$2"; shift ;;
 	  -c|--scheduler) TIME="$2"; shift ;;
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
-	  -p|--ip_site) SITE="$2"; shift ;;
-	  -o|--vpn_dir) OPENVPN="$2"; shift ;;
 	  -a|--args) ARGS="${@:2}"; shift ;;
 	  #*) echo -e "Unknown argument:\t$arg"; exit 0 ;;
 	esac
@@ -57,7 +52,7 @@ done
 
 
 # ERROR CHECKING
-# Exit if the last argument given is not --args|-a
+# exit if --arg|-a is parsed but is not the last argument given
 if [[ $CMD = *"--args"* || $CMD = *"-a"* ]]; then
 	ALL_ARGS="\-d\|-s\|-c\|-t\|-p\|-o\|-a\|--args\|--vpn_dir\|--ip_site\|--torrent_dir\|--scheduler\|--sleep\|--download_dir"
 	ARGUMENTS=$(echo $CMD | grep $ALL_ARGS -o)
@@ -81,17 +76,12 @@ if [ -z $SLEEP ]; then
 	echo $(log_date): setting default value for --sleep=6h
 	SLEEP="6h"
 fi
-if [ -z $SITE ]; then
-	echo $(log_date): setting default value for --ip_site=http://ipecho.net/plain
-	SITE="http://ipecho.net/plain"
-fi
 if [ -z $DOWNLOAD_DIR ]; then
 	echo $(log_date): setting default value for --download_dir=${HOME}/Downloads/
 	DOWNLOAD_DIR=${HOME}/Downloads/
 fi
 
 
-# FUNCTIONS
 scheduler() {
 	# schedules time to execute autoTransmission everyday
 	if [ ! -z $TIME ]; then
@@ -128,34 +118,13 @@ startup_app() {
 	mkdir -p ${HERE}/log
 	touch $LOG
 	transmission-daemon -w $DOWNLOAD_DIR
-	sleep 10
+	sleep 5
 }
 
 
 delete_old() { 
 	# delete files from directory containing torrent/magnets that are older than 72 hours
 	find $TORRENT_DIR -type f -mmin +4320 -exec rm {} \;
-}
-
-
-init_VPN() {
-	# NOTE: requires sudo.
-	if [ ! -z $OPENVPN ]; then
-		pkill openvpn
-		HOME_IP=$(curl $SITE)
-		echo "$(log_date): Home IP: $HOME_IP"
-		# if the IP address is the same as HOME_IP then connect to VPN.
-		# check every 30 minutes
-		while [ "true" ]; do
-		CURRENT_IP=$(curl $SITE)	
-		if [ $HOME_IP = $CURRENT_IP ]; then
-			echo "$(log_date): Initiating VPN"
-			sudo openvpn ${OPENVPN}/*.ovpn &
-			echo "$(log_date): Connected IP: $(curl $SITE)"
-		fi
-		sleep 30m
-		done
-	fi
 }
 
 
@@ -218,13 +187,6 @@ remove_torrents() {
 exit_transmission() {
 	echo $(date): exiting transmission.
 	transmission-remote --exit
-}
-
-
-kill_vpn() {
-	if [ ! -z $OPENVPN ]; then
-		pkill openvpn
-	fi
 }
 
 
