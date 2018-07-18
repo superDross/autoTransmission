@@ -10,26 +10,28 @@ Add and download torrent files for 8 hours.
 ```bash
 ./autoTransmission.sh --torrent_dir ~/torrent_files/ --sleep 8h
 ```
-Connect to a VPN while adding and downloading torrent files (requires root).
+Schedule autoTransmission to execute at 11:45pm for 9 hours everyday.
 ```bash
-sudo ./autoTransmission.sh --torrent_dir ~/torrent_fles/ --vpn_dir ~/open_vpn_files/
+./autoTransmission.sh --scheduler 23:45 --torrent_dir ~/torrent_files/ --sleep 9h
+```
+Parse --downlimit arguments to transmission-remote.
+```bash
+# NOTE: --args must be last argument parsed to work correctly
+./autoTransmission.sh --torrent_dir ~/torrent_files/ --args --downlimit 10
 ```
 
 ## Setup
+The setup script creates an autoTransmission alias, alters the transmission-daemon settings to not need authentication and creates a VPN systemd service.
 ### OpenVPN
-Download your OpenVPN files and create a login.conf containing the username on one line and password on the second line (make sure it is only readable by the root user). Add the following to your opnevpn.ovpn file:
-```
-auth-user-pass /path/to/login.conf
+Setting up a VPN script as a systemd service is possible by following the below instructions.
 
-ca /path/to/ca.crt
+Download your OpenVPN files and create a login.txt containing the username on one line and password on the second line. Add the following to your opnevpn.ovpn file:
+```
+auth-user-pass /path/to/login.txt
+
+ca /path/toca.crt
 cert /path/to/client.crt
 key /path/to/client.key
 ```
-### Scheduling
-You can schedule this script to run everyday by editing the below cron command and placing it into your crontab file with `crontab -e`.
-```
-45 23 * * * ${HOME}/.profile; .  ${HOME}/.bashrc; ${HOME}/bin/autoTransmission.sh --torrent_dir <dir> --download_dir <dir>
-```
-### Transmission Authentication
-If you dont want to run this script then you will have to alter the /etc/transmission-daemon/settings.json file. In the file `/etc/transmission-daemon/settings.json` change `rpc-authentication-required: true`to `rpc-authentication-required: false`.
 
+sudo ./setup.sh
