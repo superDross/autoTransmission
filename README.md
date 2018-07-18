@@ -25,13 +25,13 @@ The setup script creates an autoTransmission alias, alters the transmission-daem
 ### OpenVPN
 Setting up a VPN script as a systemd service is possible by following the below instructions.
 
-Download your OpenVPN files and create a login.txt containing the username on one line and password on the second line. Add the following to your opnevpn.ovpn file:
+Download your OpenVPN files and create a login.txt containing the username on one line and password on the second line. Add the following to your openvpn.ovpn file:
 ```
 auth-user-pass /path/to/login.txt
 
-ca /path/toca.crt
+ca /path/to/ca.crt
 cert /path/to/client.crt
 key /path/to/client.key
 ```
-
-sudo ./setup.sh
+### Execution
+To complete setup run `sudo ./setup.sh`
