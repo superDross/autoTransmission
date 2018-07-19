@@ -1,4 +1,7 @@
 #!/bin/bash
+# autoVPN.sh; check VPN is connected every few minutes and reconnect if not.
+
+set -euo pipefail
 
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
@@ -13,6 +16,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	  -p, --openvpn_dir      path to download data to dir containing .ovpn files
 	  -s, --sleep            the amount of time to recheck VPN connection, default=5m
 	  -i, --ip_site          website to scrape IP address from, default=http://ipecho.net/plain
+	  --setup                path to dir containing .ovpn files, enables a systemd service at boot
 	other:
 	  --help                 print this help page 
 	EOF
@@ -27,6 +31,7 @@ log_date() {
 
 
 # VARIABLES
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 LOG=${HERE}/log/autoVPN.log
 
 
@@ -37,6 +42,7 @@ while [[ $# -gt 0 ]]; do
 	  -i|--ip_site) SITE="$2"; shift ;;
 	  -p|--openvpn_dir) OPENVPN="$2"; shift ;;
 	  -s|--sleep) SLEEP="$2"; shift ;;
+	  --setup) OPENVPN_DIR="$2"; shift ;;
 	  *) echo -e "Unknown argument:\t$arg"; exit 0 ;;
 	esac
 	shift
@@ -44,7 +50,7 @@ done
 
 
 # COMPULSORY ARGS
-if [ -z $OPENVPN ]; then
+if [[ -z $OPENVPN  && -z $OPENVPN_DIR ]]; then
 	echo "$(log_date): --openvpn_dir is compulsory"
 	exit 1
 fi
@@ -57,6 +63,51 @@ fi
 if [ -z $SLEEP ]; then
 	SLEEP="5m"
 fi
+
+
+sudo_check(){
+	# exit script if the script is not run as root user
+	# $1 should be the script name and root restricted args/options
+	if [ "$(id -u)" != "0" ]; then
+		echo "$(date): $1 most be run as root. Exiting."
+		exit 1
+	fi
+}
+
+
+setup() {
+	# setup a systemd openvpn service to enable this script to work on boot
+	sudo_check "autoVPN.sh --setup"
+	if [ ! -z $OPENVPN_DIR ]; then
+		echo "Do you want to set up autoVPN as a systemd service (press anykey)?"
+		read answer
+		# create systemd file
+		cat <<-EOF > /lib/systemd/system/autoVPN.service
+		[Unit]
+		Description=autoVPN
+		StartLimitIntervalSec=61
+		StartLimitBurst=15
+
+
+		[Service]
+		Type=forking
+		ExecStart=${HERE}/autoVPN.sh --openvpn_dir $OPENVPN_DIR
+		ExecStop=/usr/bin/killall openvpn
+		Restart=always
+		RestartSec=60
+		Environment=DISPLAY=:%i
+		TimeoutStartSec=0
+
+		[Install]
+		WantedBy=default.target
+		EOF
+		# enable systemd service
+		systemctl enable autoVPN.service
+		echo $(log_date): autoVPN will work on boot now
+		exit 1
+	fi
+}
+
 
 
 init_VPN() {
@@ -86,4 +137,10 @@ kill_vpn() {
 }
 
 
-init_VPN | tee $LOG
+autoVPN() {
+	setup
+	init_VPN 
+}
+
+
+autoVPN | tee $LOG
