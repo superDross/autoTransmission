@@ -86,7 +86,7 @@ setup() {
 		Description=autoVPN
 		StartLimitIntervalSec=61
 		StartLimitBurst=15
-
+		Startlimitaction=none
 
 		[Service]
 		Type=forking
