@@ -11,7 +11,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	  -t, --torrent_dir      path to directory containing torrent/magnet files
 	optional arguments:
 	  -p, --openvpn_dir      path to download data to dir containing .ovpn files
-	  -s, --sleep            the amount of time to recheck VPN connection, default=30m
+	  -s, --sleep            the amount of time to recheck VPN connection, default=5m
 	  -i, --ip_site          website to scrape IP address from, default=http://ipecho.net/plain
 	other:
 	  --help                 print this help page 
@@ -24,6 +24,10 @@ fi
 log_date() {
 	echo [`date '+%Y-%m-%d %H:%M:%S'`] 
 }
+
+
+# VARIABLES
+LOG=${HERE}/log/autoVPN.log
 
 
 # ARGUMENT PARSER 
@@ -51,7 +55,7 @@ if [ -z $SITE ]; then
 	SITE="http://ipecho.net/plain"
 fi
 if [ -z $SLEEP ]; then
-	SLEEP="30m"
+	SLEEP="5m"
 fi
 
 
@@ -81,4 +85,5 @@ kill_vpn() {
 	fi
 }
 
-init_VPN
+
+init_VPN | tee $LOG
