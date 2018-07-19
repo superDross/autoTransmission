@@ -1,8 +1,6 @@
 #!/bin/bash
 # autoVPN.sh; check VPN is connected every few minutes and reconnect if not.
 
-set -euo pipefail
-
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
@@ -86,7 +84,6 @@ setup() {
 		Description=autoVPN
 		StartLimitIntervalSec=61
 		StartLimitBurst=15
-		Startlimitaction=none
 
 		[Service]
 		Type=forking
