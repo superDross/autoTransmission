@@ -96,8 +96,6 @@ setup() {
 	if [ ! -z $SETTINGS ]; then
 		# exit if not run by root user
 		sudo_check "autoTransmission.sh --settings"
-		echo "$(log_date): transmission settings and .bashrc file will be altered. press any key to continue":
-		read anykey
 		service transmission-daemon stop
 		# transmission authentication disabling
 		if grep '"rpc-authentication-required": true' $SETTINGS; then

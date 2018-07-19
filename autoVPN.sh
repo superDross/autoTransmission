@@ -76,8 +76,6 @@ setup() {
 	# setup a systemd openvpn service to enable this script to work on boot
 	sudo_check "autoVPN.sh --setup"
 	if [ ! -z $OPENVPN_DIR ]; then
-		echo "Do you want to set up autoVPN as a systemd service (press anykey)?"
-		read answer
 		# create systemd file
 		cat <<-EOF > /lib/systemd/system/autoVPN.service
 		[Unit]
