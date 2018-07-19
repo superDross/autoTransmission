@@ -45,11 +45,11 @@ while [[ $# -gt 0 ]]; do
 	  -c|--scheduler) TIME="$2"; shift ;;
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
 	  -a|--args) ARGS="${@:2}"; shift ;;
+	  --setup) SETTINGS="/var/lib/transmission-daemon/.config/transmission-daemon/settings.json" ;;
 	  #*) echo -e "Unknown argument:\t$arg"; exit 0 ;;
 	esac
 	shift
 done
-
 
 # ERROR CHECKING
 # exit if --arg|-a is parsed but is not the last argument given
@@ -65,21 +65,59 @@ fi
 
 
 # COMPULSORY ARGS
-if [ -z $TORRENT_DIR ]; then
+if [[ -z $TORRENT_DIR && -z $SETTINGS ]]; then
 	echo "--torrent_dir is compulsory"
 	exit 1
 fi
 
 
 # DEFAULT VALUES
-if [ -z $SLEEP ]; then
+if [[ -z $SLEEP && -z $SETTINGS ]]; then
 	echo $(log_date): setting default value for --sleep=6h
 	SLEEP="6h"
 fi
-if [ -z $DOWNLOAD_DIR ]; then
+if [[ -z $DOWNLOAD_DIR && -z $SETTINGS ]]; then
 	echo $(log_date): setting default value for --download_dir=${HOME}/Downloads/
 	DOWNLOAD_DIR=${HOME}/Downloads/
 fi
+
+
+sudo_check(){
+	# exit script if the script is not run as root user
+	# $1 should be the script name and root restricted args/options
+	if [ "$(id -u)" != "0" ]; then
+		echo "$(date): $1 most be run as root. Exiting."
+		exit 1
+	fi
+}
+
+
+setup() {
+	if [ ! -z $SETTINGS ]; then
+		# exit if not run by root user
+		sudo_check "autoTransmission.sh --settings"
+		echo "$(log_date): transmission settings and .bashrc file will be altered. press any key to continue":
+		read anykey
+		service transmission-daemon stop
+		# transmission authentication disabling
+		if grep '"rpc-authentication-required": true' $SETTINGS; then
+			echo "$(loag_date): changing transmission authentication settings."
+			sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' $SETTINGS
+		else
+			echo "$(log_date): Authentication already disabled."
+		fi
+		# bash alias added to .bashrc
+		if grep --quiet "alias autoTransmission=" ${HOME}/.bashrc; then
+			echo $(log_date): autoTransmission alias already present in the users BASHRC
+		else
+			echo $(log_date): appending autoTransmission to bashrc
+			echo alias autoTransmission="${HERE}/autoTransmission.sh" >> ${HOME}/.bashrc
+		fi
+		# restart service
+		service transmission-daemon start
+		exit 0
+	fi
+}
 
 
 scheduler() {
@@ -191,6 +229,7 @@ exit_transmission() {
 
 
 autoTransmission() {
+	setup
 	scheduler
 	startup_app
 	add_torrents
