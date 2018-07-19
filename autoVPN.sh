@@ -11,9 +11,8 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	Connects to VPN and re-establishes connection when lost.
 
 	required arguments:
-	  -t, --torrent_dir      path to directory containing torrent/magnet files
+	  -p, --openvpn_dir      path to directroy containing .ovpn files
 	optional arguments:
-	  -p, --openvpn_dir      path to download data to dir containing .ovpn files
 	  -s, --sleep            the amount of time to recheck VPN connection, default=5m
 	  -i, --ip_site          website to scrape IP address from, default=http://ipecho.net/plain
 	  --setup                path to dir containing .ovpn files, enables a systemd service at boot
@@ -109,8 +108,8 @@ setup() {
 }
 
 
-
 init_VPN() {
+	# initiate openvpn and monitor/re-establish VPN connection
 	if [ ! -z $OPENVPN ]; then
 		pkill openvpn
 		HOME_IP=$(curl $SITE)

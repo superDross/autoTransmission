@@ -19,12 +19,26 @@ Parse --downlimit arguments to transmission-remote.
 # NOTE: --args must be last argument parsed to work correctly
 ./autoTransmission.sh --torrent_dir ~/torrent_files/ --args --downlimit 10
 ```
-
 ## Setup
-The setup script creates an autoTransmission alias, alters the transmission-daemon settings to not need authentication and creates a VPN systemd service.
-### OpenVPN
-Setting up a VPN script as a systemd service is possible by following the below instructions.
+Setup bashrc alias and transmission authentication disablement.
+``` bash
+sudo ./autoTransmission.sh --setup
+```
 
+# autoVPN
+Monitors and reconnects an openvpn VPN every few minutes as a systemd service.
+## Usage
+Check VPN connection every 20 minutes.
+``` bash
+./autoVPN.sh --openvpn_dir /path/to/ovpn_dir/ --sleep 20m
+```
+Check VPN every 2 hours and check IP address using ipinfo.io.
+``` bash
+./autoVPN.sh --openvpn_dir /path/to/ovpn_dir/ --sleep 2h --ip_site https://ipinfo.io
+```
+## Setup
+Setup autoVPN as a systemd service.
+### OpenVPN files
 Download your OpenVPN files and create a login.txt containing the username on one line and password on the second line. Add the following to your openvpn.ovpn file:
 ```
 auth-user-pass /path/to/login.txt
@@ -34,4 +48,6 @@ cert /path/to/client.crt
 key /path/to/client.key
 ```
 ### Execution
-To complete setup run `sudo ./setup.sh`
+``` bash
+sudo ./autoVPN.sh --setup
+```
