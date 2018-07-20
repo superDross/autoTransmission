@@ -18,7 +18,7 @@ Schedule autoTransmission to execute at 11:45pm for 9 hours everyday.
 ```bash
 ./autoTransmission.sh --scheduler 23:45 --torrent_dir ~/torrent_files/ --sleep 9h
 ```
-Download torrents and onlt remove when the download:upload ratio has reached 1:1
+Download torrents and only remove when the download:upload ratio has reached 1:1
 ```bash
 ./autoTransmission.sh --ratio 1.0 --torrent_dir ~/torrent_files/
 ```

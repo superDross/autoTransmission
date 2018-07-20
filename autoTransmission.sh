@@ -6,7 +6,7 @@
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
-	Usage:  autoTransmission.sh [-h] [-t DIR] [-d DIR] [-s STRING] [-p STRING] [-o DIR ]
+	Usage:  autoTransmission.sh [-h] [-t DIR] [-d DIR] [-s STRING] [-p STRING] [-o DIR ] [-r FLOAT]
 
 	Add torrents files to transmission and downoads data for a predetermined time period.
 
@@ -52,6 +52,7 @@ while [[ $# -gt 0 ]]; do
 	esac
 	shift
 done
+
 
 # ERROR CHECKING
 # exit if --arg|-a is parsed but is not the last argument given
@@ -200,26 +201,27 @@ download_time() {
 
 
 remove_torrents() {
-	# list all torrents, remove first & last line and first space on every line 
-	# and use cut to get first field from each line
-	TORRENTLIST=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
+	torrent_id_list=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
 			cut --only-delimited --delimiter \  --fields 1)
 	# remove downloaded torrents and restart 'Stopped' torrents
-	for torrent_id in $TORRENTLIST; do
+	for torrent_id in $torrent_id_list; do
 		torrent_info=$(transmission-remote -t $torrent_id --info)
 		downloaded=$(echo $torrent_info | grep "Percent Done: 100%")
 		stopped=$(echo $torrent_info | grep "State: Stopped")
 		torrent_name=$(echo $torrent_info | grep Name | cut -d : -f 2)
 		ratio=$(echo $torrent_info | grep -o "Ratio: [0-9]*.[0-9]" | cut -d ' ' -f2)
 		ratio_met=$(echo "$ratio >= $RATIO" | bc -l)
+		# remove torrent only if --ratio given and torrent meets the value parsed
 		if [[ ! -z $RATIO && $ratio_met = 1 ]]; then
 			transmission-remote  -t $torrent_id --remove
 			echo "$(log_date): $torrent_name successfully downloaded "
 			echo "$(log_date): Removing $torrent_name from torrent list"
+		# remove torrent only if downloaded = 100%
 		elif [ "$downloaded" != "" ]; then
 			transmission-remote  -t $torrent_id --remove
 			echo "$(log_date): $torrent_name successfully downloaded "
 			echo "$(log_date): Removing $torrent_name from torrent list"
+		# restart torrent if stopped
 		elif [ "$stopped" != "" ]; then
 			transmission-remote -t $torrent_id -s
 			echo $(log_date): Restarting $torrent_name

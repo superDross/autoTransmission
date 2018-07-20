@@ -13,6 +13,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	optional arguments:
 	  -s, --sleep            the amount of time to recheck VPN connection, default=5m
 	  -i, --ip_site          website to scrape IP address from, default=http://ipecho.net/plain
+	options:
 	  --setup                path to dir containing .ovpn files, enables a systemd service at boot
 	other:
 	  --help                 print this help page 
