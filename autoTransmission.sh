@@ -15,7 +15,8 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	optional arguments:
 	  -d, --download_dir     path to download data to, default=\$HOME/Downloads
 	  -s, --sleep            the amount of time to download, default=6h
-	  -c, --scheduler        time to initiate autoTransmission, permenantely adds to your crontab.
+	  -c, --scheduler        time to initiate autoTransmission, permenantely adds to your crontab
+	  -r, --ratio            download/upload ratio threshold to reach before removing torrent
 	  -a, --args             args/options to parse to transmission-remote
 	other:
 	  --help                 print this help page 
@@ -44,6 +45,7 @@ while [[ $# -gt 0 ]]; do
 	  -s|--sleep) SLEEP="$2"; shift ;;
 	  -c|--scheduler) TIME="$2"; shift ;;
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
+	  -r|--ratio) RATIO="$2"; shift ;;
 	  -a|--args) ARGS="${@:2}"; shift ;;
 	  --setup) SETTINGS="/var/lib/transmission-daemon/.config/transmission-daemon/settings.json" ;;
 	  #*) echo -e "Unknown argument:\t$arg"; exit 0 ;;
@@ -208,7 +210,13 @@ remove_torrents() {
 		downloaded=$(echo $torrent_info | grep "Percent Done: 100%")
 		stopped=$(echo $torrent_info | grep "State: Stopped")
 		torrent_name=$(echo $torrent_info | grep Name | cut -d : -f 2)
-		if [ "$downloaded" != "" ]; then
+		ratio=$(echo $torrent_info | grep -o "Ratio: [0-9]*.[0-9]" | cut -d ' ' -f2)
+		ratio_met=$(echo "$ratio >= $RATIO" | bc -l)
+		if [[ ! -z $RATIO && $ratio_met = 1 ]]; then
+			transmission-remote  -t $torrent_id --remove
+			echo "$(log_date): $torrent_name successfully downloaded "
+			echo "$(log_date): Removing $torrent_name from torrent list"
+		elif [ "$downloaded" != "" ]; then
 			transmission-remote  -t $torrent_id --remove
 			echo "$(log_date): $torrent_name successfully downloaded "
 			echo "$(log_date): Removing $torrent_name from torrent list"

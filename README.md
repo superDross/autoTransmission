@@ -1,6 +1,10 @@
 # autoTransmission
 A [transmission](https://transmissionbt.com/about/) wrapper script that automates and schedules torrent downloading.
 
+## Requirements
+``` bash
+sudo apt install bc
+```
 ## Usage
 Add and download all torrent files in the ~/torrent\_files/ directory.
 ```bash
@@ -13,6 +17,10 @@ Add and download torrent files for 8 hours.
 Schedule autoTransmission to execute at 11:45pm for 9 hours everyday.
 ```bash
 ./autoTransmission.sh --scheduler 23:45 --torrent_dir ~/torrent_files/ --sleep 9h
+```
+Download torrents and onlt remove when the download:upload ratio has reached 1:1
+```bash
+./autoTransmission.sh --ratio 1.0 --torrent_dir ~/torrent_files/
 ```
 Parse --downlimit arguments to transmission-remote.
 ```bash
