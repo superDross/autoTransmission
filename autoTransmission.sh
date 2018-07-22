@@ -29,22 +29,11 @@ fi
 
 # LOGGING
 readonly LOG="/tmp/$(basename .sh).log"
-log_date() {
-	echo [`date '+%Y-%m-%d %H:%M:%S'`] 
-}
-info() {
-	echo "$(log_date) [INFO]: $*" | tee -a "$LOG" >&2
-}
-warning() { 
-	echo "$(log_date) [WARNING]: $*" | tee -a "$LOG" >&2 
-}
-error() { 
-	echo "$(log_date) [ERROR]: $*" | tee -a "$LOG" >&2 
-}
-fatal() { 
-	echo "$(log_date) [FATAL]: $*" | tee -a "$LOG" >&2
-	exit 1
-}
+log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
+info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
+warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
+error()    { echo "[ERROR] $(log_date): $*" | tee -a "$LOG" >&2 ; }
+fatal()    { echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
 
 
 # VARIABLES
@@ -76,16 +65,14 @@ if [[ $CMD = *"--args"* || $CMD = *"-a"* ]]; then
 	ARGUMENTS=$(echo $CMD | grep $ALL_ARGS -o)
 	LAST_ARG=$(echo $ARGUMENTS | awk '{print $NF}')
 	if [[ $LAST_ARG != "--args" && $LAST_ARG != "-a" ]]; then
-		echo $(date): --args/-a must be the last argument given.
-		exit 1
+		fatal "--args/-a must be the last argument given."
 	fi
 fi
 
 
 # COMPULSORY ARGS
 if [[ -z $TORRENT_DIR && -z $SETTINGS ]]; then
-	echo "--torrent_dir is compulsory"
-	exit 1
+	fatal "--torrent_dir is compulsory"
 fi
 
 

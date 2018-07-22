@@ -22,10 +22,13 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 fi
 
 
-# UNIVERSAL FUNCTION
-log_date() {
-	echo [`date '+%Y-%m-%d %H:%M:%S'`] 
-}
+# LOGGING
+readonly LOG="/tmp/$(basename .sh).log"
+log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
+info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
+warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
+error()    { echo "[ERROR] $(log_date): $*" | tee -a "$LOG" >&2 ; }
+fatal()    { echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
 
 
 # VARIABLES
@@ -49,16 +52,17 @@ done
 
 # COMPULSORY ARGS
 if [[ -z $OPENVPN  && -z $OPENVPN_DIR ]]; then
-	echo "$(log_date): --openvpn_dir is compulsory"
-	exit 1
+	fatael "--openvpn_dir is compulsory"
 fi
 
 
 # DEFAULT VALUES
 if [ -z $SITE ]; then
+	info "setting default value for --ip_site=http://ipecho.net/plain"
 	SITE="http://ipecho.net/plain"
 fi
 if [ -z $SLEEP ]; then
+	info "setting default value for --sleep=5m"
 	SLEEP="5m"
 fi
 
@@ -67,8 +71,7 @@ sudo_check(){
 	# exit script if the script is not run as root user
 	# $1 should be the script name and root restricted args/options
 	if [ "$(id -u)" != "0" ]; then
-		echo "$(date): $1 most be run as root. Exiting."
-		exit 1
+		fatal "$1 most be run as root. Exiting."
 	fi
 }
 
@@ -98,8 +101,8 @@ setup() {
 		EOF
 		# enable systemd service
 		systemctl enable autoVPN.service
-		echo $(log_date): autoVPN will work on boot now
-		exit 1
+		info "autoVPN will work on boot now"
+		exit 0
 	fi
 }
 
@@ -109,15 +112,15 @@ init_VPN() {
 	if [ ! -z $OPENVPN ]; then
 		pkill openvpn
 		HOME_IP=$(curl $SITE)
-		echo "$(log_date): Home IP: $HOME_IP"
+		info "Home IP: $HOME_IP"
 		# if the IP address is the same as HOME_IP then connect to VPN.
 		# check every 30 minutes
 		while [ "true" ]; do
 		CURRENT_IP=$(curl $SITE)	
 		if [ $HOME_IP = $CURRENT_IP ]; then
-			echo "$(log_date): Initiating VPN"
+			info "Initiating VPN"
 			sudo openvpn ${OPENVPN}/*.ovpn &
-			echo "$(log_date): Connected IP: $(curl $SITE)"
+			info "Connected IP: $(curl $SITE)"
 		fi
 		sleep $SLEEP
 		done
@@ -138,4 +141,6 @@ autoVPN() {
 }
 
 
-autoVPN | tee $LOG
+if [[ "$BASH_SOURCE" = "$0" ]];then 
+	autoVPN | tee $LOG
+fi
