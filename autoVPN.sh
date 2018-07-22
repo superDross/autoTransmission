@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # autoVPN.sh; check VPN is connected every few minutes and reconnect if not.
 
 # HELP PAGE
@@ -23,7 +23,7 @@ fi
 
 
 # LOGGING
-readonly LOG="/tmp/$(basename .sh).log"
+readonly LOG="/tmp/$(basename "$0" .sh).log"
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
 info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
