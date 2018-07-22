@@ -2,6 +2,8 @@
 # autoTransmission.sh: Automate transmissin management and scheduling.
 # NOTE: Add an option to implement the website django thing
 
+set -eo pipefail
+
 
 # HELP PAGE
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
@@ -25,16 +27,29 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 fi
 
 
-# UNIVERSAL FUNCTION
+# LOGGING
+readonly LOG="/tmp/$(basename .sh).log"
 log_date() {
 	echo [`date '+%Y-%m-%d %H:%M:%S'`] 
+}
+info() {
+	echo "$(log_date) [INFO]: $*" | tee -a "$LOG" >&2
+}
+warning() { 
+	echo "$(log_date) [WARNING]: $*" | tee -a "$LOG" >&2 
+}
+error() { 
+	echo "$(log_date) [ERROR]: $*" | tee -a "$LOG" >&2 
+}
+fatal() { 
+	echo "$(log_date) [FATAL]: $*" | tee -a "$LOG" >&2
+	exit 1
 }
 
 
 # VARIABLES
 CMD="$@"
 HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-LOG=${HERE}/log/autoTransmission.log
 
 
 # ARGUMENT PARSER 
@@ -76,11 +91,11 @@ fi
 
 # DEFAULT VALUES
 if [[ -z $SLEEP && -z $SETTINGS ]]; then
-	echo $(log_date): setting default value for --sleep=6h
+	info "setting default value for --sleep=6h"
 	SLEEP="6h"
 fi
 if [[ -z $DOWNLOAD_DIR && -z $SETTINGS ]]; then
-	echo $(log_date): setting default value for --download_dir=${HOME}/Downloads/
+	info "setting default value for --download_dir=${HOME}/Downloads/"
 	DOWNLOAD_DIR=${HOME}/Downloads/
 fi
 
@@ -89,8 +104,7 @@ sudo_check(){
 	# exit script if the script is not run as root user
 	# $1 should be the script name and root restricted args/options
 	if [ "$(id -u)" != "0" ]; then
-		echo "$(date): $1 most be run as root. Exiting."
-		exit 1
+		fatal "$1 most be run as root. Exiting."
 	fi
 }
 
@@ -102,16 +116,16 @@ setup() {
 		service transmission-daemon stop
 		# transmission authentication disabling
 		if grep '"rpc-authentication-required": true' $SETTINGS; then
-			echo "$(loag_date): changing transmission authentication settings."
+			info "changing transmission authentication settings."
 			sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' $SETTINGS
 		else
-			echo "$(log_date): Authentication already disabled."
+			info "Authentication already disabled."
 		fi
 		# bash alias added to .bashrc
 		if grep --quiet "alias autoTransmission=" ${HOME}/.bashrc; then
-			echo $(log_date): autoTransmission alias already present in the users BASHRC
+			info "autoTransmission alias already present in the users BASHRC"
 		else
-			echo $(log_date): appending autoTransmission to bashrc
+			info "appending autoTransmission to bashrc"
 			echo alias autoTransmission="${HERE}/autoTransmission.sh" >> ${HOME}/.bashrc
 		fi
 		# restart service
@@ -135,16 +149,14 @@ scheduler() {
 		CURRENT_COMMAND_TIME=$(echo $CURRENT_ENTRIES | cut -d ' ' -f-2)
 		# exit if autoTransmisison aleady scheduled for the given time
 		if [[ "$MINUTES $HOUR" = $CURRENT_COMMAND_TIME ]]; then
-			echo $(log_date): autoTransmission is already scheduled for this time
-			exit 1
+			info "autoTransmission is already scheduled for this time"
 		# only add transmission command if it isn't present within crontab already
 		elif [[ $CURRENT_COMMAND != *"${HERE}/autoTransmission.sh ${COMMAND}"* ]]; then
-			echo $(log_date): Updating crontab
+			info "Updating crontab"
 			CRONTAB_COMMAND="$MINUTES $HOUR * * * $BASH_FILES ${HERE}/autoTransmission.sh $COMMAND"
 			(crontab -l ; echo "$CRONTAB_COMMAND") | uniq | crontab -
 		else
-			echo $(log_date): command already written to crontab file
-			exit 1
+			info "command already written to crontab file"
 		fi
 		exit 0
 	fi
@@ -153,7 +165,7 @@ scheduler() {
 
 startup_app() {
 	# construct log dir and file and start transmission
-	echo $(log_date): ${HERE}/autoTransmission.sh $CMD
+	info "${HERE}/autoTransmission.sh $CMD"
 	mkdir -p ${HERE}/log
 	touch $LOG
 	transmission-daemon -w $DOWNLOAD_DIR
@@ -172,14 +184,14 @@ add_torrents() {
 	for torrent_file in ${TORRENT_DIR}/*; do
 		if [ ${torrent_file: -8} == ".torrent" ]; then
 			transmission-remote  -a $torrent_file 
-			echo "$(log_date): Adding $(basename $torrent_file)."
+			info "Adding $(basename $torrent_file)."
 		elif [ ${torrent_file: -7} == ".magnet" ]; then
 			transmission-remote -a `cat $torrent_file`
-			echo "$(log_date): Adding $(basename $torrent_file)"
+			info "Adding $(basename $torrent_file)"
 		else
-			echo "$(log_date): Invalid file type: $(basename $torrent_file)"
+			error "Invalid file type: $(basename $torrent_file)"
 		fi
-		echo "$(log_date): Deleting $(basename $torrent_file)"
+		info "Deleting $(basename $torrent_file)"
 		rm $torrent_file
 	done
 }
@@ -188,14 +200,14 @@ add_torrents() {
 parse_transmission_commands() {
 	# parse --args arguments to transmission-remote
 	if [[ ! -z $ARGS ]]; then
-		echo $(log_date): parsing transmission remote commands
+		info "parsing transmission remote commands"
 		transmission-remote $ARGS
 	fi
 }
 
 
 download_time() {
-	echo $(log_date): downloading for $SLEEP
+	info "downloading for $SLEEP"
 	sleep $SLEEP
 }	
 
@@ -214,24 +226,24 @@ remove_torrents() {
 		# remove torrent only if --ratio given and torrent meets the value parsed
 		if [[ ! -z $RATIO && $ratio_met = 1 ]]; then
 			transmission-remote  -t $torrent_id --remove
-			echo "$(log_date): $torrent_name successfully downloaded "
-			echo "$(log_date): Removing $torrent_name from torrent list"
+			info "$torrent_name successfully downloaded "
+			info "Removing $torrent_name from torrent list"
 		# remove torrent only if downloaded = 100%
 		elif [ "$downloaded" != "" ]; then
 			transmission-remote  -t $torrent_id --remove
-			echo "$(log_date): $torrent_name successfully downloaded "
-			echo "$(log_date): Removing $torrent_name from torrent list"
+			info "$torrent_name successfully downloaded "
+			info "Removing $torrent_name from torrent list"
 		# restart torrent if stopped
 		elif [ "$stopped" != "" ]; then
 			transmission-remote -t $torrent_id -s
-			echo $(log_date): Restarting $torrent_name
+			info "Restarting $torrent_name"
 		fi
 	done
 }
 
 
 exit_transmission() {
-	echo $(date): exiting transmission.
+	info "exiting transmission."
 	transmission-remote --exit
 }
 
@@ -245,8 +257,10 @@ autoTransmission() {
 	download_time
 	remove_torrents
 	exit_transmission
-	echo "$(log_date): autoTransmission Complete!"
+	info "autoTransmission Complete!"
 }
 
 
-autoTransmission | tee $LOG
+if [[ "$BASH_SOURCE" = "$0" ]];then 
+	autoTransmission | tee $LOG
+fi
