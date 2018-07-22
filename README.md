@@ -3,7 +3,7 @@ A [transmission](https://transmissionbt.com/about/) wrapper script that automate
 
 ## Requirements
 ``` bash
-sudo apt install bc
+sudo apt install bc shunit2
 ```
 ## Usage
 Add and download all torrent files in the ~/torrent\_files/ directory.
@@ -31,6 +31,12 @@ Parse --downlimit arguments to transmission-remote.
 Setup bashrc alias and transmission authentication disablement.
 ``` bash
 sudo ./autoTransmission.sh --setup
+```
+## Testing
+Ensure shUnit2 is installed.
+```bash
+cd test/
+./test_autoTransmission.sh
 ```
 
 # autoVPN

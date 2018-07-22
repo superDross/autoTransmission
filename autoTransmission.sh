@@ -153,7 +153,6 @@ scheduler() {
 startup_app() {
 	# construct log dir and file and start transmission
 	info "${HERE}/autoTransmission.sh $CMD"
-	mkdir -p ${HERE}/log
 	touch $LOG
 	transmission-daemon -w $DOWNLOAD_DIR
 	sleep 5
