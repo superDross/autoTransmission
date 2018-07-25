@@ -28,7 +28,7 @@ fi
 
 
 # LOGGING
-readonly LOG="/tmp/$(basename  "$0" .sh).log"
+LOG="/tmp/$(basename  "$0" .sh).log"
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
 info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
@@ -97,47 +97,46 @@ sudo_check(){
 
 
 setup() {
-	if [ ! -z $SETTINGS ]; then
 		# exit if not run by root user
-		sudo_check "autoTransmission.sh --settings"
-		service transmission-daemon stop
-		# transmission authentication disabling
-		if grep '"rpc-authentication-required": true' $SETTINGS; then
-			info "changing transmission authentication settings."
-			sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' $SETTINGS
-		else
-			info "Authentication already disabled."
-		fi
-		# bash alias added to .bashrc
-		if grep --quiet "alias autoTransmission=" ${HOME}/.bashrc; then
-			info "autoTransmission alias already present in the users BASHRC"
-		else
-			info "appending autoTransmission to bashrc"
-			echo alias autoTransmission="${HERE}/autoTransmission.sh" >> ${HOME}/.bashrc
-		fi
-		# restart service
-		service transmission-daemon start
-		exit 0
+	sudo_check "autoTransmission.sh --settings"
+	service transmission-daemon stop
+	# transmission authentication disabling
+	if grep '"rpc-authentication-required": true' $SETTINGS; then
+		info "changing transmission authentication settings."
+		sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' $SETTINGS
+	else
+		info "Authentication already disabled."
 	fi
+	# bash alias added to .bashrc
+	if grep --quiet "alias autoTransmission=" ${HOME}/.bashrc; then
+		info "autoTransmission alias already present in the users BASHRC"
+	else
+		info "appending autoTransmission to bashrc"
+		echo alias autoTransmission="${HERE}/autoTransmission.sh" >> ${HOME}/.bashrc
+	fi
+	# restart service
+	service transmission-daemon start
 }
 
 
 scheduler() {
+	if [[ $1 = "--test" ]]; then
+		TIME="10:33"
+	fi
 	# schedules time to execute autoTransmission everyday
-	if [ ! -z $TIME ]; then
-		# remove the --scheduler arg from the command
-		COMMAND=$(echo "$CMD" |  sed 's/\(-c\|--scheduler\) [0-9]*:[0-9]*\ //g')
-		# only add transmission command if it isn't present within crontab already
-		if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
-			# extract the autoTransmission commands and times currently within crontab file
-			fatal "command already written to crontab file"
-		else
-			info "Updating crontab"
-			BASH_FILES="${HOME}/.profile; .  ${HOME}/.bashrc;" 
-			CRONTAB_COMMAND="$MINUTES $HOUR * * * $BASH_FILES ${HERE}/autoTransmission.sh $COMMAND"
-			(crontab -l ; echo "$CRONTAB_COMMAND") | uniq | crontab -
-		fi
-		exit 0
+	# remove the --scheduler arg from the command
+	HOUR=$(echo $TIME | cut -d : -f 1)
+	MINUTES=$(echo $TIME | cut -d : -f 2)
+	BASH_FILES="${HOME}/.profile; .  ${HOME}/.bashrc;" 
+	CRONTAB_COMMAND="$MINUTES $HOUR * * * $BASH_FILES ${HERE}/autoTransmission.sh $COMMAND"
+	COMMAND=$(echo "$CMD" |  sed 's/\(-c\|--scheduler\) [0-9]*:[0-9]*\ //g')
+	# only add transmission command if it isn't present within crontab already
+	if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
+		# extract the autoTransmission commands and times currently within crontab file
+		fatal "autoTransmission already present within the crontab file"
+	else
+		info "Updating crontab"
+		(crontab -l ; echo "$CRONTAB_COMMAND") | uniq | crontab -
 	fi
 }
 
@@ -177,10 +176,8 @@ add_torrents() {
 
 parse_transmission_commands() {
 	# parse --args arguments to transmission-remote
-	if [[ ! -z $ARGS ]]; then
-		info "parsing transmission remote commands"
-		transmission-remote $ARGS
-	fi
+	info "parsing transmission remote commands"
+	transmission-remote $ARGS
 }
 
 
@@ -232,11 +229,17 @@ exit_transmission() {
 
 
 autoTransmission() {
-	setup
-	scheduler
+	if [ ! -z $SETTINGS ]; then
+		setup
+	fi
+	if [ ! -z $TIME ]; then
+		scheduler
+	fi
 	startup_app
 	add_torrents
-	parse_transmission_commands
+	if [[ ! -z $ARGS ]]; then
+		parse_transmission_commands
+	fi
 	download_time
 	remove_torrents
 	exit_transmission
