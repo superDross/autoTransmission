@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+#
 # autoTransmission.sh: Automate transmission management and scheduling.
-# NOTE: Add an option to implement the website django thing
+#
+# NOTE: --ratio, --download_dir --torrent_dir are actually not needed as they are already available as
+#       --global-seedratio, --download-dir and -c respectively in transmission-daemon.
 
 set -eo pipefail
 
 # HELP PAGE
-# NOTE: --ratio, --download_dir --torrent_dir are actually not needed as they are already available as
-#       --global-seedratio, --download-dir and -c respectively in transmission-daemon.
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
 	Usage:  autoTransmission.sh [-h] [-t DIR] [-d DIR] [-s STRING] [-p STRING] [-o DIR ] [-r FLOAT]
@@ -17,30 +18,29 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	  -t, --torrent_dir      path to directory containing torrent/magnet files
 	optional arguments:
 	  -d, --download_dir     path to download data to, default=\$HOME/Downloads
-	  -s, --sleep            the amount of time to download, default=6h
+	  -s, --sleep            the amount of TIME to download, default=6h
 	  -c, --scheduler        time to initiate autoTransmission, permenantely adds to your crontab
 	  -r, --ratio            download/upload ratio threshold to reach before removing torrent
 	  -a, --args             args/options to parse to transmission-remote
+	options
+	  --setup                alter transmission-daemon settings and bashrc files
 	other:
 	  --help                 print this help page 
 	EOF
 	exit 0
 fi
 
+# VARIABLES
+CMD="$@"
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+LOG="/tmp/$(basename  "$0" .sh).log"
 
 # LOGGING
-LOG="/tmp/$(basename  "$0" .sh).log"
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
 info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 error()    { echo "[ERROR] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 fatal()    { echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
-
-
-# VARIABLES
-CMD="$@"
-HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 
 # ARGUMENT PARSER 
 while [[ $# -gt 0 ]]; do
@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
 	  -s|--sleep) SLEEP="$2"; shift ;;
 	  -c|--scheduler) TIME="$2"; shift ;;
 	  -t|--torrent_dir) TORRENT_DIR="$2"; shift ;;
-	  -r|--ratio) RATIO="$2"; shift ;;
+	  -r|--ratio) RATION_LIMIT="$2"; shift ;;
 	  -a|--args) ARGS="${@:2}"; shift ;;
 	  --setup) SETTINGS="/var/lib/transmission-daemon/.config/transmission-daemon/settings.json" ;;
 	  #*) echo -e "Unknown argument:\t$arg"; exit 0 ;;
@@ -59,51 +59,92 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-# ERROR CHECKING
-# exit if --arg|-a is parsed but is not the last argument given
-if [[ $CMD = *"--args"* || $CMD = *"-a"* ]]; then
-	ALL_ARGS="\-d\|-s\|-c\|-t\|-p\|-o\|-a\|--args\|--vpn_dir\|--ip_site\|--torrent_dir\|--scheduler\|--sleep\|--download_dir"
-	ARGUMENTS=$(echo $CMD | grep $ALL_ARGS -o)
-	LAST_ARG=$(echo $ARGUMENTS | awk '{print $NF}')
-	if [[ $LAST_ARG != "--args" && $LAST_ARG != "-a" ]]; then
-		fatal "--args/-a must be the last argument given."
+###############################################################################
+# Ensures all mandatory arguments have been parsed and are
+# in the desired order
+#
+# Globals:
+#	TORRENT_DIR
+#	SETTINGS
+#	TIME
+#	CMD
+# Arguemnts:
+#	None
+# Returns::
+#	None
+###############################################################################
+arg_check() {
+	if [[ -z $TORRENT_DIR && -z $SETTINGS && -z $TIME ]]; then
+		fatal "--torrent_dir is compulsory"
 	fi
-fi
-
-
-# COMPULSORY ARGS
-if [[ -z $TORRENT_DIR && -z $SETTINGS && -z $TIME ]]; then
-	fatal "--torrent_dir is compulsory"
-fi
-
-
-# DEFAULT VALUES
-if [[ -z $SLEEP && -z $SETTINGS && -z $TIME ]]; then
-	info "setting default value for --sleep=6h"
-	SLEEP="6h"
-fi
-if [[ -z $DOWNLOAD_DIR && -z $SETTINGS && -z $TIME ]]; then
-	info "setting default value for --download_dir=${HOME}/Downloads/"
-	DOWNLOAD_DIR=${HOME}/Downloads/
-fi
-
-
-sudo_check(){
-	# exit script if the script is not run as root user
-	# $1 should be the script name and root restricted args/options
-	if [ "$(id -u)" != "0" ]; then
-		fatal "$1 most be run as root. Exiting."
+	if [[ $CMD = *"--args"* || $CMD = *"-a"* ]]; then
+		local all_args="\-d\|-s\|-c\|-t\|-p\|-o\|-a\|--args\|--vpn_dir\|--ip_site\|--torrent_dir\|--scheduler\|--sleep\|--download_dir"
+		local arguments=$(echo $CMD | grep $all_args -o)
+		local last_arg=$(echo $arguments | awk '{print $NF}')
+		if [[ $last_arg != "--args" && $last_arg != "-a" ]]; then
+			fatal "--args/-a must be the last argument given."
+		fi
 	fi
 }
 
 
+###############################################################################
+# Apply default values to optional argsuments.
+#
+# Globals:
+#	SLEEP
+#	DOWNLOAD_DIR
+# Arguemnts:
+#	None
+# Returns:
+#	Default variables
+###############################################################################
+apply_defaults() {
+	if [[ -z $SLEEP && -z $SETTINGS && -z $TIME ]]; then
+		info "setting default value for --sleep=6h"
+		SLEEP="6h"
+	fi
+	if [[ -z $DOWNLOAD_DIR && -z $SETTINGS && -z $TIME ]]; then
+		info "setting default value for --download_dir=${HOME}/Downloads/"
+		DOWNLOAD_DIR=${HOME}/Downloads/
+	fi
+}
+
+###############################################################################
+# Exit if the script is not run as root user.
+#
+# Globals:
+#	None
+# Arguments:
+#	CMD ($1): should be the script name and root restricted ARGS/options
+# Returns:
+# 	fatal msg
+###############################################################################
+sudo_check(){
+	local CMD="$1"
+	if [ "$(id -u)" != "0" ]; then
+		fatal "$command most be run as root. Exiting."
+	fi
+}
+
+###############################################################################
+# Alters transmission-daemon SETTINGS to not require authentication for use
+# and adds an alias to users bashrc.
+# 
+# Globals:
+#	None
+# Arguments
+#	None
+# Returns:
+#	None
+###############################################################################
 setup() {
 	# exit if not run by root user
-	sudo_check "autoTransmission.sh --settings"
+	sudo_check "autoTransmission.sh --SETTINGS"
 	service transmission-daemon stop
 	# transmission authentication disabling
 	if grep '"rpc-authentication-required": true' $SETTINGS; then
-		info "changing transmission authentication settings."
+		info "changing transmission authentication SETTINGS."
 		sed -i 's/"rpc-authentication-required": true,/"rpc-authentication-required": false,/g' $SETTINGS
 	else
 		info "Authentication already disabled."
@@ -119,47 +160,85 @@ setup() {
 	service transmission-daemon start
 }
 
-
+###############################################################################
+# Adds the autoTransmission command parsed from the commandline 
+# to cron to be scheduled for a given time everyday.
+#
+# Globals:
+#	HERE
+# Arguments
+#	time ($1): a time in 24h format e.g. 23:45
+# Returns:
+#	None
+###############################################################################
 scheduler() {
-	# allows parsing of schedule
-	if [[ -z $TIME ]]; then
-		TIME=$1
-	fi
-	# schedules time to execute autoTransmission everyday
+	local time=$1
+	local hour=$(echo $time | cut -d : -f 1)
+	local minutes=$(echo $time | cut -d : -f 2)
+	local bash_files="${HOME}/.profile; .  ${HOME}/.bashrc;" 
 	# remove the --scheduler arg from the command
-	HOUR=$(echo $TIME | cut -d : -f 1)
-	MINUTES=$(echo $TIME | cut -d : -f 2)
-	BASH_FILES="${HOME}/.profile; .  ${HOME}/.bashrc;" 
-	CRONTAB_COMMAND="$MINUTES $HOUR * * * $BASH_FILES ${HERE}/autoTransmission.sh $COMMAND"
-	COMMAND=$(echo "$CMD" |  sed 's/\(-c\|--scheduler\) [0-9]*:[0-9]*\ //g')
+	local args=$(echo "$CMD" |  sed 's/\(-c\|--scheduler\) [0-9]*:[0-9]*\ //g')
+	local crontab_command="$minutes $hour * * * $bash_files ${HERE}/autoTransmission.sh $args"
 	# only add transmission command if it isn't present within crontab already
 	if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
 		# extract the autoTransmission commands and times currently within crontab file
 		fatal "autoTransmission already present within the crontab file"
 	else
 		info "Updating crontab"
-		(crontab -l ; echo "$CRONTAB_COMMAND") | uniq | crontab -
+		(crontab -l ; echo "$crontab_command") | uniq | crontab -
 	fi
 }
 
 
+###############################################################################
+# Start transmision-daemon and create log file.
+#
+# Globals:
+#	LOG
+#	HERE
+#	CMD
+#	DOWNLOAD_DIR
+# Arguments
+#	None
+# Returns:
+#	None
+###############################################################################
 startup_app() {
-	# construct log dir and file and start transmission
+	if [ ! -f $LOG ]; then
+		touch $LOG
+	fi
 	info "${HERE}/autoTransmission.sh $CMD"
-	touch $LOG
 	transmission-daemon -w $DOWNLOAD_DIR
 	sleep 5
 }
 
-
+###############################################################################
+# Delete files from directory containing torrent/magnets that
+# are older than 72 hours.
+#
+# Globals:
+#	TORRENT_DIR
+# Arguments
+#	None
+# Returns:
+#	None
+###############################################################################
 delete_old() { 
-	# delete files from directory containing torrent/magnets that are older than 72 hours
 	find $TORRENT_DIR -type f -mmin +4320 -exec rm {} \;
 }
 
-
+###############################################################################
+# Add all torrents & magnets in a given dir to transmission,
+# then delete said file.
+#
+# Globals:
+#	TORRENT_DIR
+# Arguments
+#	None
+# Returns:
+#	None
+###############################################################################
 add_torrents() {
-	# add all torrents & magnets in a given dir to transmission, then delete said file 
 	for torrent_file in ${TORRENT_DIR}/*; do
 		if [ ${torrent_file: -8} == ".torrent" ]; then
 			transmission-remote  -a $torrent_file
@@ -175,33 +254,58 @@ add_torrents() {
 	done
 }
 
-
+###############################################################################
+# Parse given --args arguments to transmission-remote.
+#
+# Globals:
+#	None
+# Arguemnts:
+#	None
+# Returns:
+#	None
+###############################################################################
 parse_transmission_commands() {
-	# parse --args arguments to transmission-remote
 	info "parsing transmission remote commands"
 	transmission-remote $ARGS
 }
 
-
+###############################################################################
+# Sleep and download for a predetermined amount of time.
+#
+# Globals:
+#	SLEEP
+# Arguments
+#	None
+# Returns:
+#	None
+###############################################################################
 download_time() {
 	info "downloading for $SLEEP"
 	sleep $SLEEP
 }	
 
-
+###############################################################################
+# Remove completed torrents and restart 'Stopped' torrents.
+#
+# Globals:
+#	RATIO_LIMIT
+# Arguments
+# 	None
+# Returns:
+#	None
+###############################################################################
 remove_torrents() {
-	torrent_id_list=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
+	local torrent_id_list=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
 			cut --only-delimited --delimiter \  --fields 1)
-	# remove downloaded torrents and restart 'Stopped' torrents
 	for torrent_id in $torrent_id_list; do
-		torrent_info=$(transmission-remote -t $torrent_id --info)
-		downloaded=$(echo $torrent_info | grep "Percent Done: 100%")
-		stopped=$(echo $torrent_info | grep "State: Stopped")
-		torrent_name=$(echo $torrent_info | grep Name | cut -d : -f 2)
-		ratio=$(echo $torrent_info | grep -o "Ratio: [0-9]*.[0-9]" | cut -d ' ' -f2)
-		ratio_met=$(echo "$ratio >= $RATIO" | bc -l)
+		local torrent_info=$(transmission-remote -t $torrent_id --info)
+		local downloaded=$(echo $torrent_info | grep "Percent Done: 100%")
+		local stopped=$(echo $torrent_info | grep "State: Stopped")
+		local torrent_name=$(echo $torrent_info | grep Name | cut -d : -f 2)
+		local ratio=$(echo $torrent_info | grep -o "Ratio: [0-9]*.[0-9]" | cut -d ' ' -f2)
+		local ratio_met=$(echo "$ratio >= $RATION_LIMIT" | bc -l)
 		# remove torrent only if --ratio given and torrent meets the value parsed
-		if [[ ! -z $RATIO && $ratio_met = 1 ]]; then
+		if [[ ! -z $RATION_LIMIT && $ratio_met = 1 ]]; then
 			transmission-remote  -t $torrent_id --remove
 			info "$torrent_name successfully downloaded "
 			info "Removing $torrent_name from torrent list"
@@ -218,27 +322,36 @@ remove_torrents() {
 	done
 }
 
-
+###############################################################################
+# Exit transmission and kill all transmission-daemon processes.
+#
+# Globals:
+#	None
+# Arguments
+#	None
+# Returns:
+#	None
+###############################################################################
 exit_transmission() {
 	info "exiting transmission."
 	transmission-remote --exit
-	# kill all transmission daemon processes
 	local pids=$(ps aux | grep -v grep | grep transmission-daemon | awk '{print $2}')
 	for pid in $pids; do
 		kill -9 $pid
 	done
 }
 
-
-autoTransmission() {
+main() {
 	if [ ! -z $SETTINGS ]; then
 		setup
 		exit 0
 	fi
 	if [ ! -z $TIME ]; then
-		scheduler
+		scheduler $TIME
 		exit 0
 	fi
+	apply_defaults
+	arg_check
 	startup_app
 	add_torrents
 	if [[ ! -z $ARGS ]]; then
@@ -252,5 +365,5 @@ autoTransmission() {
 
 
 if [[ "$BASH_SOURCE" = "$0" ]];then 
-	autoTransmission | tee $LOG
+	main | tee $LOG
 fi
