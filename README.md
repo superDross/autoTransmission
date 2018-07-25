@@ -78,6 +78,14 @@ key /path/to/client.key
 ```
 ### Execution
 ``` bash
-sudo ./autoVPN.sh --setup
+sudo ./autoVPN.sh --setup ~/VPN_dir/
 sudo systemctl start autoVPN
+```
+### Removing
+```bash
+sudo systemctl stop autoVPN
+sudo systemctl disable autoVPN
+sudo rm /lib/systemd/system/autoVPN.service
+sudo systemctl daemon-reload
+sudo systemctl reset-failed
 ```

@@ -11,7 +11,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	required arguments:
 	  -p, --openvpn_dir      path to directroy containing .ovpn files
 	optional arguments:
-	  -s, --sleep            the amount of time to recheck VPN connection, default=5m
+	  -s, --sleep            the amount of time to recheck VPN connection, default=20m
 	  -i, --ip_site          website to scrape IP address from, default=http://ipecho.net/plain
 	options:
 	  --setup                path to dir containing .ovpn files, enables a systemd service at boot
@@ -23,7 +23,7 @@ fi
 
 
 # LOGGING
-readonly LOG="/tmp/$(basename "$0" .sh).log"
+LOG="/tmp/$(basename "$0" .sh).log"
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
 info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
@@ -33,7 +33,7 @@ fatal()    { echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
 
 # VARIABLES
 HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-LOG=${HERE}/log/autoVPN.log
+LOG="/tmp/$(basename "$0" .sh).log"
 
 
 # ARGUMENT PARSER 
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
 	  -i|--ip_site) SITE="$2"; shift ;;
 	  -p|--openvpn_dir) OPENVPN="$2"; shift ;;
 	  -s|--sleep) SLEEP="$2"; shift ;;
-	  --setup) OPENVPN_DIR="$2"; shift ;;
+	  --setup) SETUP_OPENVPN="$2"; shift ;;
 	  *) echo -e "Unknown argument:\t$arg"; exit 0 ;;
 	esac
 	shift
@@ -51,7 +51,7 @@ done
 
 
 # COMPULSORY ARGS
-if [[ -z $OPENVPN  && -z $OPENVPN_DIR ]]; then
+if [[ -z $OPENVPN  && -z $SETUP_OPENVPN ]]; then
 	fatal "--openvpn_dir is compulsory"
 fi
 
@@ -62,7 +62,7 @@ if [ -z $SITE ]; then
 	SITE="http://ipecho.net/plain"
 fi
 if [ -z $SLEEP ]; then
-	info "setting default value for --sleep=5m"
+	info "setting default value for --sleep=20m"
 	SLEEP="5m"
 fi
 
@@ -88,7 +88,7 @@ setup() {
 
 	[Service]
 	Type=forking
-	ExecStart=${HERE}/autoVPN.sh --openvpn_dir $OPENVPN_DIR
+	ExecStart=${HERE}/autoVPN.sh --openvpn_dir $SETUP_OPENVPN
 	ExecStop=/usr/bin/killall openvpn
 	Restart=always
 	RestartSec=60
@@ -107,25 +107,27 @@ setup() {
 init_VPN() {
 	# initiate openvpn and monitor/re-establish VPN connection
 	if [ ! -z $OPENVPN ]; then
-		pkill openvpn
+		sudo pkill openvpn
 		HOME_IP=$(curl $SITE)
 		info "Home IP: $HOME_IP"
 		# if the IP address is the same as HOME_IP then connect to VPN.
 		# check every 30 minutes
 		while [ "true" ]; do
-		CURRENT_IP=$(curl $SITE)	
-		if [ $HOME_IP = $CURRENT_IP ]; then
-			info "Initiating VPN"
-			sudo openvpn ${OPENVPN}/*.ovpn &
-			info "Connected IP: $(curl $SITE)"
-		fi
-		sleep $SLEEP
+            CURRENT_IP=$(curl $SITE)	
+            if [[ $HOME_IP = $CURRENT_IP ]]; then
+                info "Initiating VPN"
+                sudo openvpn ${OPENVPN}/*.ovpn &
+                info "Connected IP: $(curl $SITE)"
+                echo ${log_date}: reconnect VPN >> ~/reconnections.log
+            fi
+            sleep $SLEEP
 		done
 	fi
 }
 
 
 kill_vpn() {
+
 	if [ ! -z $OPENVPN ]; then
 		pkill openvpn
 	fi
@@ -133,8 +135,12 @@ kill_vpn() {
 
 
 autoVPN() {
-	if [ ! -z $OPENVPN_DIR ]; then
+    if [ ! -f  $LOG ]; then
+        touch $LOG
+    fi
+	if [ ! -z $SETUP_OPENVPN ]; then
 		setup
+        exit 0
 	fi
 	init_VPN 
 }

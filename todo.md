@@ -1,4 +1,4 @@
 # To Do
 ## autoVPN
+- log otputs openvpn stuff only, fix required
 ## autoTransmission
-- Give option to remove torrent only when it has reached a certain ratio
