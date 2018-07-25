@@ -120,8 +120,8 @@ setup() {
 
 
 scheduler() {
-	if [[ $1 = "--test" ]]; then
-		TIME="10:33"
+	if [[ -z $TIME ]]; then
+		TIME=$1
 	fi
 	# schedules time to execute autoTransmission everyday
 	# remove the --scheduler arg from the command

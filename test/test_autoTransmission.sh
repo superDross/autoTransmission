@@ -49,7 +49,7 @@ test_scheduler() {
 		crontab -l | grep -v autoTransmission | crontab -
 	fi
 	# test with 10:33 schedule
-	scheduler --test
+	scheduler 10:33
 	# ensure test entry is within crontab
 	test_entry=$(crontab -l | grep "33 10.*autoTransmission")
 	# remove test entry from crontab
