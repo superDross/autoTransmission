@@ -52,7 +52,7 @@ done
 
 # COMPULSORY ARGS
 if [[ -z $OPENVPN  && -z $OPENVPN_DIR ]]; then
-	fatael "--openvpn_dir is compulsory"
+	fatal "--openvpn_dir is compulsory"
 fi
 
 
@@ -79,31 +79,28 @@ sudo_check(){
 setup() {
 	# setup a systemd openvpn service to enable this script to work on boot
 	sudo_check "autoVPN.sh --setup"
-	if [ ! -z $OPENVPN_DIR ]; then
-		# create systemd file
-		cat <<-EOF > /lib/systemd/system/autoVPN.service
-		[Unit]
-		Description=autoVPN
-		StartLimitIntervalSec=61
-		StartLimitBurst=15
+	# create systemd file
+	cat <<-EOF > /lib/systemd/system/autoVPN.service
+	[Unit]
+	Description=autoVPN
+	StartLimitIntervalSec=61
+	StartLimitBurst=15
 
-		[Service]
-		Type=forking
-		ExecStart=${HERE}/autoVPN.sh --openvpn_dir $OPENVPN_DIR
-		ExecStop=/usr/bin/killall openvpn
-		Restart=always
-		RestartSec=60
-		Environment=DISPLAY=:%i
-		TimeoutStartSec=0
+	[Service]
+	Type=forking
+	ExecStart=${HERE}/autoVPN.sh --openvpn_dir $OPENVPN_DIR
+	ExecStop=/usr/bin/killall openvpn
+	Restart=always
+	RestartSec=60
+	Environment=DISPLAY=:%i
+	TimeoutStartSec=0
 
-		[Install]
-		WantedBy=default.target
-		EOF
-		# enable systemd service
-		systemctl enable autoVPN.service
-		info "autoVPN will work on boot now"
-		exit 0
-	fi
+	[Install]
+	WantedBy=default.target
+	EOF
+	# enable systemd service
+	systemctl enable autoVPN.service
+	info "autoVPN will work on boot now"
 }
 
 
@@ -136,7 +133,9 @@ kill_vpn() {
 
 
 autoVPN() {
-	setup
+	if [ ! -z $OPENVPN_DIR ]; then
+		setup
+	fi
 	init_VPN 
 }
 
