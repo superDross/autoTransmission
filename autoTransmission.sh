@@ -71,17 +71,17 @@ fi
 
 
 # COMPULSORY ARGS
-if [[ -z $TORRENT_DIR && -z $SETTINGS ]]; then
+if [[ -z $TORRENT_DIR && -z $SETTINGS && -z $TIME ]]; then
 	fatal "--torrent_dir is compulsory"
 fi
 
 
 # DEFAULT VALUES
-if [[ -z $SLEEP && -z $SETTINGS ]]; then
+if [[ -z $SLEEP && -z $SETTINGS && -z $TIME ]]; then
 	info "setting default value for --sleep=6h"
 	SLEEP="6h"
 fi
-if [[ -z $DOWNLOAD_DIR && -z $SETTINGS ]]; then
+if [[ -z $DOWNLOAD_DIR && -z $SETTINGS && -z $TIME ]]; then
 	info "setting default value for --download_dir=${HOME}/Downloads/"
 	DOWNLOAD_DIR=${HOME}/Downloads/
 fi
@@ -125,25 +125,17 @@ setup() {
 scheduler() {
 	# schedules time to execute autoTransmission everyday
 	if [ ! -z $TIME ]; then
-		HOUR=$(echo $TIME | cut -d : -f 1)
-		MINUTES=$(echo $TIME | cut -d : -f 2)
-		BASH_FILES="${HOME}/.profile; .  ${HOME}/.bashrc;" 
 		# remove the --scheduler arg from the command
 		COMMAND=$(echo "$CMD" |  sed 's/\(-c\|--scheduler\) [0-9]*:[0-9]*\ //g')
-		# extract the autoTransmission commands and times currently within crontab file
-		CURRENT_ENTRIES=$(crontab -l | grep auto)
-		CURRENT_COMMAND=$(echo $CURRENT_ENTRIES | cut -d ' ' -f6-)
-		CURRENT_COMMAND_TIME=$(echo $CURRENT_ENTRIES | cut -d ' ' -f-2)
-		# exit if autoTransmisison aleady scheduled for the given time
-		if [[ "$MINUTES $HOUR" = $CURRENT_COMMAND_TIME ]]; then
-			info "autoTransmission is already scheduled for this time"
 		# only add transmission command if it isn't present within crontab already
-		elif [[ $CURRENT_COMMAND != *"${HERE}/autoTransmission.sh ${COMMAND}"* ]]; then
+		if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
+			# extract the autoTransmission commands and times currently within crontab file
+			fatal "command already written to crontab file"
+		else
 			info "Updating crontab"
+			BASH_FILES="${HOME}/.profile; .  ${HOME}/.bashrc;" 
 			CRONTAB_COMMAND="$MINUTES $HOUR * * * $BASH_FILES ${HERE}/autoTransmission.sh $COMMAND"
 			(crontab -l ; echo "$CRONTAB_COMMAND") | uniq | crontab -
-		else
-			info "command already written to crontab file"
 		fi
 		exit 0
 	fi
