@@ -169,7 +169,7 @@ add_torrents() {
 	# add all torrents & magnets in a given dir to transmission, then delete said file 
 	for torrent_file in ${TORRENT_DIR}/*; do
 		if [ ${torrent_file: -8} == ".torrent" ]; then
-			transmission-remote  -a $torrent_file 
+			transmission-remote  -a $torrent_file
 			info "Adding $(basename $torrent_file)."
 		elif [ ${torrent_file: -7} == ".magnet" ]; then
 			transmission-remote -a `cat $torrent_file`
@@ -231,6 +231,11 @@ remove_torrents() {
 exit_transmission() {
 	info "exiting transmission."
 	transmission-remote --exit
+	# kill all transmission daemon processes
+	local pids=$(ps aux | grep -v grep | grep transmission-daemon | awk '{print $2}')
+	for pid in $pids; do
+		kill -9 $pid
+	done
 }
 
 
