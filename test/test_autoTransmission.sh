@@ -1,10 +1,9 @@
 oneTimeSetUp() {
-	HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-	mkdir -p ${HERE}/temp/
-	. ../autoTransmission.sh --torrent_dir ${HERE}/temp/
-	# HERE changes to autoTransmission root directory after import
-	TEMP="${HERE}/test/temp/"
-	test_torrent_name="ubuntu-18.04-desktop-amd64.iso"
+	TEMP_DIR="/tmp/autoTransmision/"
+	mkdir -p $TEMP_DIR
+	. ../autoTransmission.sh --torrent_dir $TEMP_DIR
+	apply_defaults
+	TEST_TORRENT_NAME="ubuntu-18.04-desktop-amd64.iso"
 }
 
 get_test_torrent_id() {
@@ -34,23 +33,23 @@ test_startup() {
 }
 
 test_add_torrents() {
-	wget http://releases.ubuntu.com/18.04/ubuntu-18.04-desktop-amd64.iso.torrent -P $TEMP
+	wget http://releases.ubuntu.com/18.04/ubuntu-18.04-desktop-amd64.iso.torrent -P $TEMP_DIR
 	add_torrents
 	local torrent_id=$(get_test_torrent_id)
-	local name=$(transmission-remote -t $torrent_id --info | grep -o $test_torrent_name)
-	assertEquals $test_torrent_name $name
+	local name=$(transmission-remote -t $torrent_id --info | grep -o $TEST_TORRENT_NAME)
+	assertEquals $TEST_TORRENT_NAME $name
 }
 
 test_scheduler() {
 	# remove current autoTransmission entry from crontab
 	if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
-		original_entry=$(crontab -l | grep autoTransmission)
+		local original_entry=$(crontab -l | grep autoTransmission)
 		crontab -l | grep -v autoTransmission | crontab -
 	fi
 	# test with 10:33 schedule
 	scheduler 10:33
 	# ensure test entry is within crontab
-	test_entry=$(crontab -l | grep "33 10.*autoTransmission")
+	local test_entry=$(crontab -l | grep "33 10.*autoTransmission")
 	# remove test entry from crontab
 	crontab -l | grep -v "33 10.*autoTransmission" | crontab -
 	# re-add original autoTransmission schedule
@@ -60,7 +59,7 @@ test_scheduler() {
 }
 
 oneTimeTearDown() {
-	rm -r $TEMP
+	rm -r $TEMP_DIR
 	local torrent_id=$(get_test_torrent_id)
 	transmission-remote -t $torrent_id --remove-and-delete
 	exit_transmission
