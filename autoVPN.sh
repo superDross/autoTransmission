@@ -22,6 +22,10 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 fi
 
 
+# VARIABLES
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+LOG="/tmp/$(basename "$0" .sh).log"
+
 # LOGGING
 LOG="/tmp/$(basename "$0" .sh).log"
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
@@ -29,11 +33,6 @@ info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 error()    { echo "[ERROR] $(log_date): $*" | tee -a "$LOG" >&2 ; }
 fatal()    { echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
-
-
-# VARIABLES
-HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-LOG="/tmp/$(basename "$0" .sh).log"
 
 
 # ARGUMENT PARSER 
@@ -63,7 +62,7 @@ if [ -z $SITE ]; then
 fi
 if [ -z $SLEEP ]; then
 	info "setting default value for --sleep=20m"
-	SLEEP="5m"
+	SLEEP="20m"
 fi
 
 
@@ -88,7 +87,7 @@ setup() {
 
 	[Service]
 	Type=forking
-	ExecStart=${HERE}/autoVPN.sh --openvpn_dir $SETUP_OPENVPN
+	ExecStart=${HERE}/autoVPN.sh --openvpn_dir $SETUP_OPENVPN --sleep $SLEEP
 	ExecStop=/usr/bin/killall openvpn
 	Restart=always
 	RestartSec=60

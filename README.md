@@ -16,7 +16,6 @@ sudo ./autoTransmission.sh --setup
    --sleep 8h
 ```
 ## Setup
-Setup bashrc alias and transmission authentication disablement.
 ``` bash
 sudo ./autoTransmission.sh --setup
 ```
@@ -77,8 +76,9 @@ cert /path/to/client.crt
 key /path/to/client.key
 ```
 ### Execution
+Setup autoVPN systemd service that checks VPN connection every 15 minutes
 ``` bash
-sudo ./autoVPN.sh --setup ~/VPN_dir/
+sudo ./autoVPN.sh --setup ~/VPN_dir/ --sleep 15m
 sudo systemctl start autoVPN
 ```
 ### Removing
