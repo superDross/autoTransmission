@@ -41,7 +41,6 @@ test_add_torrents() {
 	assertEquals $test_torrent_name $name
 }
 
-
 test_scheduler() {
 	# remove current autoTransmission entry from crontab
 	if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
@@ -58,7 +57,6 @@ test_scheduler() {
 	if [ ! -z "$original_entry" ]; then
 		(crontab -l; echo "$original_entry") | crontab -
 	fi
-
 }
 
 oneTimeTearDown() {

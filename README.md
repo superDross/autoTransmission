@@ -1,11 +1,32 @@
 # autoTransmission
-A [transmission](https://transmissionbt.com/about/) wrapper script that automates and schedules torrent downloading.
+A [transmission](https://transmissionbt.com/about/) wrapper script that manages and schedules torrent downloading for certain hours of the day.
 
 ## Requirements
 ``` bash
-sudo apt install bc shunit2
+sudo apt-get install bc shunit2 prgep cron
 ```
 ## Usage
+Start transmission at 11:30pm and add torrents/magnets held in `~/torrent_files`. At 7:30am, remove torrents that have been downloaded to 100% and shut down all transmission processes.
+```bash
+sudo ./autoTransmission.sh --setup
+./autoTransmission.sh --scheduler 23:30
+./autoTransmission.sh \
+   --torrent_dir ~/torrent_files/ \
+   --download_dir ~/Downloads/ \
+   --sleep 8h
+```
+## Setup
+Setup bashrc alias and transmission authentication disablement.
+``` bash
+sudo ./autoTransmission.sh --setup
+```
+## Testing
+Ensure shUnit2 is installed.
+```bash
+cd test/
+./test_autoTransmission.sh
+```
+## Example Commands
 Add and download all torrent files in the ~/torrent\_files/ directory.
 ```bash
 ./autoTransmission.sh --torrent_dir ~/torrent_files/
@@ -27,20 +48,14 @@ Parse --downlimit arguments to transmission-remote.
 # NOTE: --args must be last argument parsed to work correctly
 ./autoTransmission.sh --torrent_dir ~/torrent_files/ --args --downlimit 10
 ```
-## Setup
-Setup bashrc alias and transmission authentication disablement.
-``` bash
-sudo ./autoTransmission.sh --setup
-```
-## Testing
-Ensure shUnit2 is installed.
-```bash
-cd test/
-./test_autoTransmission.sh
-```
 
 # autoVPN
 Monitors and reconnects an openvpn VPN every few minutes as a systemd service.
+## Requirements
+``` bash
+sudo apt-get install openvpn
+```
+
 ## Usage
 Check VPN connection every 20 minutes.
 ``` bash
@@ -64,4 +79,5 @@ key /path/to/client.key
 ### Execution
 ``` bash
 sudo ./autoVPN.sh --setup
+sudo systemctl start autoVPN
 ```
