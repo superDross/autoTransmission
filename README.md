@@ -81,11 +81,3 @@ Setup autoVPN systemd service that checks VPN connection every 15 minutes
 sudo ./autoVPN.sh --setup ~/VPN_dir/ --sleep 15m
 sudo systemctl start autoVPN
 ```
-### Removing
-```bash
-sudo systemctl stop autoVPN
-sudo systemctl disable autoVPN
-sudo rm /lib/systemd/system/autoVPN.service
-sudo systemctl daemon-reload
-sudo systemctl reset-failed
-```
