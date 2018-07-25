@@ -116,12 +116,12 @@ apply_defaults() {
 # Globals:
 #	None
 # Arguments:
-#	CMD ($1): should be the script name and root restricted ARGS/options
+#	command ($1): should be the script name and root restricted ARGS/options
 # Returns:
 # 	fatal msg
 ###############################################################################
 sudo_check(){
-	local CMD="$1"
+	local command="$1"
 	if [ "$(id -u)" != "0" ]; then
 		fatal "$command most be run as root. Exiting."
 	fi
