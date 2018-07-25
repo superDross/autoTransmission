@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# autoTransmission.sh: Automate transmissin management and scheduling.
+# autoTransmission.sh: Automate transmission management and scheduling.
 # NOTE: Add an option to implement the website django thing
 
 set -eo pipefail
 
-
 # HELP PAGE
+# NOTE: --ratio, --download_dir --torrent_dir are actually not needed as they are already available as
+#       --global-seedratio, --download-dir and -c respectively in transmission-daemon.
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	cat <<- EOF
 	Usage:  autoTransmission.sh [-h] [-t DIR] [-d DIR] [-s STRING] [-p STRING] [-o DIR ] [-r FLOAT]
@@ -97,7 +98,7 @@ sudo_check(){
 
 
 setup() {
-		# exit if not run by root user
+	# exit if not run by root user
 	sudo_check "autoTransmission.sh --settings"
 	service transmission-daemon stop
 	# transmission authentication disabling
@@ -120,6 +121,7 @@ setup() {
 
 
 scheduler() {
+	# allows parsing of schedule
 	if [[ -z $TIME ]]; then
 		TIME=$1
 	fi
@@ -231,9 +233,11 @@ exit_transmission() {
 autoTransmission() {
 	if [ ! -z $SETTINGS ]; then
 		setup
+		exit 0
 	fi
 	if [ ! -z $TIME ]; then
 		scheduler
+		exit 0
 	fi
 	startup_app
 	add_torrents
