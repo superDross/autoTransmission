@@ -128,7 +128,7 @@ sudo_check(){
 }
 
 ###############################################################################
-# Alters transmission-daemon SETTINGS to not require authentication for use
+# Alters transmission-daemon settings to not require authentication for use
 # and adds an alias to users bashrc.
 # 
 # Globals:
@@ -139,7 +139,6 @@ sudo_check(){
 #	None
 ###############################################################################
 setup() {
-	# exit if not run by root user
 	sudo_check "autoTransmission.sh --SETTINGS"
 	service transmission-daemon stop
 	# transmission authentication disabling
@@ -156,7 +155,6 @@ setup() {
 		info "appending autoTransmission to bashrc"
 		echo alias autoTransmission="${HERE}/autoTransmission.sh" >> ${HOME}/.bashrc
 	fi
-	# restart service
 	service transmission-daemon start
 }
 
@@ -165,7 +163,9 @@ setup() {
 # to cron to be scheduled for a given time everyday.
 #
 # Globals:
+#	HOME
 #	HERE
+#	CMD
 # Arguments
 #	time ($1): a time in 24h format e.g. 23:45
 # Returns:
@@ -181,7 +181,6 @@ scheduler() {
 	local crontab_command="$minutes $hour * * * $bash_files ${HERE}/autoTransmission.sh $args"
 	# only add transmission command if it isn't present within crontab already
 	if [ ! -z "$(crontab -l | grep autoTransmission)" ]; then
-		# extract the autoTransmission commands and times currently within crontab file
 		fatal "autoTransmission already present within the crontab file"
 	else
 		info "Updating crontab"
@@ -362,7 +361,6 @@ main() {
 	exit_transmission
 	info "autoTransmission Complete!"
 }
-
 
 if [[ "$BASH_SOURCE" = "$0" ]];then 
 	main | tee $LOG

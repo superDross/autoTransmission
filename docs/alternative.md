@@ -5,12 +5,12 @@ If you are okay with downloading all the time and only limiting download speeds 
 The daemon settings can be found at `/var/lib/transmission-daemon/.config/transmission-daemon/settings.json`.
 In the settings you can change the download dir to: 
 ```bash
-"download-dir": "/media/osmc.PRINCE/Downloads/",
+"download-dir": "/media/osmc/PRINCE/Downloads/",
 ```
 Add watch directory to end of settings file:
 ```bash
     "watch-dir": "/home/osmc/trrt/",
-    "watch-dir-enabled": truie
+    "watch-dir-enabled": true
 ```
 ## Remove Script
 Add the below script to `~/bin/remove_torrents`.
@@ -43,7 +43,7 @@ remove_torrents
 ```
 
 ## Crontab
-Alter to download at maximum speed during sleeping hours and at 5MB/s during awake hours
+Alter to download at maximum speed during sleeping hours and at 5MB/s during waking hours
 ```
 45 23 * * * /home/david/.profile; .  /home/david/.bashrc; transmission-remote -D -U
 00 06 * * * /home/david/.profile; .  /home/david/.bashrc; transmission-remote -d 5000 -u 100
