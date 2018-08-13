@@ -10,15 +10,15 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	Connects to VPN and re-establishes connection when lost.
 
 	required arguments:
-	  -p, --openvpn_dir	  path to directroy containing .ovpn files
+	  -p, --openvpn_dir   path to directroy containing .ovpn files
 	optional arguments:
 	  -s, --sleep         the amount of time to recheck VPN connection, default=20m
-	  -i, --ip_site	      website to scrape IP address from, default=http://ipecho.net/plain
+	  -i, --ip_site       website to scrape IP address from, default=http://ipecho.net/plain
 	  -t, --setup         path to dir containing .ovpn files, enables a systemd service at boot
 	options:
-	  --remove_service	   disables and removes created systemd service
+	  --remove_service    disables and removes created systemd service
 	other:
-	  --help               print this help page 
+	  --help              print this help page
 	EOF
 	exit 0
 fi
@@ -29,15 +29,15 @@ LOG="/tmp/$(basename "$0" .sh).log"
 
 # LOGGING
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
-info()	 { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
-warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
-error()	{ echo "[ERROR] $(log_date): $*" | tee -a "$LOG" >&2 ; }
-fatal()	{ echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
+info()	 { echo "[INFO] $(log_date): $*"  ; }
+warning()  { echo "[WARNING] $(log_date): $*" ; }
+error()	{ echo "[ERROR] $(log_date): $*"  ; }
+fatal()	{ echo "[FATAL] $(log_date): $*" ; exit 1 ; }
 
-# ARGUMENT PARSER 
+# ARGUMENT PARSER
 while [[ $# -gt 0 ]]; do
 	arg="$1"
-	case $arg in 
+	case $arg in
 	  -i|--ip_site) SITE="$2"; shift ;;
 	  -p|--openvpn_dir) OPENVPN="$2"; shift ;;
 	  -s|--sleep) SLEEP="$2"; shift ;;
@@ -152,8 +152,27 @@ disable_service() {
 }
 
 ###############################################################################
+# Intiate VPN and kill all other openvpn processes.
+#
+# Globals:
+#   OPENVPN
+#   SITE
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+init_vpn() {
+	pkill openvpn
+	info "Initiating VPN"
+	sudo openvpn ${OPENVPN}/*.ovpn &
+	sleep 30
+	info "Connected IP: $(curl $SITE)"
+}
+
+###############################################################################
 # Initiate openvpn and monitor VPN connection over a given
-# time period and reconnect to VPN when home IP is detected.
+# time period and reconnect to VPN when connection is lost.
 #
 # Globals:
 #	OPENVPN
@@ -164,20 +183,16 @@ disable_service() {
 # Returns:
 #	None
 ###############################################################################
-init_VPN() {
+monitor_vpn() {
 	if [ ! -z $OPENVPN ]; then
-		sudo pkill openvpn
-		sudo openvpn ${OPENVPN}/*.ovpn &
-        sleep 30
-        while [ -z $vpn_ip ]; do
-            local vpn_ip=$(curl $SITE)
-        done
+		# establish connection
+		init_vpn
+        local vpn_ip=$(curl $SITE)
+		# monitor connection
         while [ "true" ]; do
-			local current_ip=$(curl $SITE)	
+			local current_ip=$(curl $SITE)
 			if [[ $vpn_ip != $current_ip ]]; then
-				info "Initiating VPN"
-				sudo openvpn ${OPENVPN}/*.ovpn &
-				info "Connected IP: $(curl $SITE)"
+				init_vpn
 			fi
 			sleep $SLEEP
 		done
@@ -185,21 +200,24 @@ init_VPN() {
 }
 
 main() {
+	# create log file if it does not exist
 	if [ ! -f  $LOG ]; then
 		touch $LOG
 	fi
 	arg_check
+	# if --remove_service option parsed
 	if [ ! -z $REMOVE ]; then
 		disable_service
 		exit 0
 	fi
+	# if --setup arg parsed
 	if [ ! -z $SETUP_OPENVPN ]; then
 		setup
 		exit 0
 	fi
-	init_VPN 
+	monitor_vpn
 }
 
-if [[ "$BASH_SOURCE" = "$0" ]];then 
-	main | tee $LOG
+if [[ "$BASH_SOURCE" = "$0" ]];then
+	main | tee -a "$LOG" >&2 
 fi

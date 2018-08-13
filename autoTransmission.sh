@@ -37,10 +37,10 @@ LOG="/tmp/$(basename  "$0" .sh).log"
 
 # LOGGING
 log_date() { echo [`date '+%Y-%m-%d %H:%M:%S'`] ; }
-info()     { echo "[INFO] $(log_date): $*" | tee -a "$LOG" >&2 ; }
-warning()  { echo "[WARNING] $(log_date): $*" | tee -a "$LOG" >&2 ; }
-error()    { echo "[ERROR] $(log_date): $*" | tee -a "$LOG" >&2 ; }
-fatal()    { echo "[FATAL] $(log_date): $*" | tee -a "$LOG" >&2 ; exit 1 ; }
+info()     { echo "[INFO] $(log_date): $*" ; }
+warning()  { echo "[WARNING] $(log_date): $*" ; }
+error()    { echo "[ERROR] $(log_date): $*"  ; }
+fatal()    { echo "[FATAL] $(log_date): $*" ; exit 1 ; }
 
 # ARGUMENT PARSER 
 while [[ $# -gt 0 ]]; do
@@ -123,7 +123,7 @@ apply_defaults() {
 sudo_check(){
 	local command="$1"
 	if [ "$(id -u)" != "0" ]; then
-		fatal "$command most be run as root. Exiting."
+		fatal "$command must be run as root. Exiting."
 	fi
 }
 
@@ -341,10 +341,12 @@ exit_transmission() {
 }
 
 main() {
+	# if --setup option parsed
 	if [ ! -z $SETTINGS ]; then
 		setup
 		exit 0
 	fi
+	# if --sleep arg parsed
 	if [ ! -z $TIME ]; then
 		scheduler $TIME
 		exit 0
@@ -353,6 +355,7 @@ main() {
 	arg_check
 	startup_app
 	add_torrents
+	# if --args arg parsed
 	if [[ ! -z $ARGS ]]; then
 		parse_transmission_commands
 	fi
@@ -363,5 +366,5 @@ main() {
 }
 
 if [[ "$BASH_SOURCE" = "$0" ]];then 
-	main | tee $LOG
+	main | tee -a "$LOG" >&2 
 fi
