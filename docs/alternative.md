@@ -13,9 +13,12 @@ Add watch directory to end of settings file:
     "watch-dir-enabled": true
 ```
 ## Remove Script
-Add the below script to `~/bin/remove_torrents`.
 ```bash
 #!/bin/bash
+#
+# Remove torrents that are 100% downloaded from transmission.
+#
+# Add this script to `~/bin/remove_torrents.sh`.
 
 remove_torrents() {
 	torrent_id_list=$(transmission-remote  -l | sed -e '1d;$d;s/^ *//' | \
@@ -43,12 +46,17 @@ remove_torrents
 ```
 
 ## Crontab
-Alter to download at maximum speed during sleeping hours and at 5MB/s during waking hours
 ```
+# Download at maximum speed during sleeping hours and at 5MB/s during waking hours.
 45 23 * * * /home/david/.profile; .  /home/david/.bashrc; transmission-remote -D -U
 00 06 * * * /home/david/.profile; .  /home/david/.bashrc; transmission-remote -d 5000 -u 100
+
+# Remove 100% downloaded torrents from transmission.
 01 06 * * * /home/david/.profile; .  /home/david/.bashrc; /home/osmc/bin/remove_torrents.sh
 ```
 
 ## Finally
-`sudo servce transmission-daemon restart`
+```bash
+# Restart transmission
+sudo servce transmission-daemon restart
+```

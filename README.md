@@ -69,7 +69,7 @@ sudo ./autoVPN.sh --setup ~/VPN_dir/ --sleep 15m
 
 # Done. VPN reconnection and monitoring should be automated now.
 ```
-## Command Examples
+## Example Commands
 ``` bash
 # Check VPN connection every 20 minutes.
 sudo ./autoVPN.sh --openvpn_dir /path/to/ovpn_dir/ --sleep 20m
