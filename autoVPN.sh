@@ -12,13 +12,13 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
 	required arguments:
 	  -p, --openvpn_dir	  path to directroy containing .ovpn files
 	optional arguments:
-	  -s, --sleep			the amount of time to recheck VPN connection, default=20m
-	  -i, --ip_site		  website to scrape IP address from, default=http://ipecho.net/plain
-	  -t, --setup			path to dir containing .ovpn files, enables a systemd service at boot
+	  -s, --sleep         the amount of time to recheck VPN connection, default=20m
+	  -i, --ip_site	      website to scrape IP address from, default=http://ipecho.net/plain
+	  -t, --setup         path to dir containing .ovpn files, enables a systemd service at boot
 	options:
 	  --remove_service	   disables and removes created systemd service
 	other:
-	  --help				 print this help page 
+	  --help               print this help page 
 	EOF
 	exit 0
 fi
@@ -167,15 +167,17 @@ disable_service() {
 init_VPN() {
 	if [ ! -z $OPENVPN ]; then
 		sudo pkill openvpn
-		local home_ip=$(curl $SITE)
-		info "Home IP: $home_ip"
-		while [ "true" ]; do
+		sudo openvpn ${OPENVPN}/*.ovpn &
+        sleep 30
+        while [ -z $vpn_ip ]; do
+            local vpn_ip=$(curl $SITE)
+        done
+        while [ "true" ]; do
 			local current_ip=$(curl $SITE)	
-			if [[ $home_ip = $current_ip ]]; then
+			if [[ $vpn_ip != $current_ip ]]; then
 				info "Initiating VPN"
 				sudo openvpn ${OPENVPN}/*.ovpn &
 				info "Connected IP: $(curl $SITE)"
-				echo $(log_date): reconnect VPN >> ~/reconnections.log
 			fi
 			sleep $SLEEP
 		done
