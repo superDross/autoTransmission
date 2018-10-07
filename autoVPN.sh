@@ -190,12 +190,30 @@ monitor_vpn() {
         local vpn_ip=$(curl $SITE)
 		# monitor connection
         while [ "true" ]; do
+			check_connection
 			local current_ip=$(curl $SITE)
 			if [[ $vpn_ip != $current_ip ]]; then
 				init_vpn
 			fi
 			sleep $SLEEP
 		done
+	fi
+}
+
+
+###############################################################################
+# Checks to see if openvpn has closed due to connection issues
+# and ends service if that is the case.
+#
+###############################################################################
+check_connection() {
+	local error_msg="TLS key negotiation failed to occur within 60 seconds"
+	local error=$(journalctl -u autoVPN.service | tail -n 50 | grep "$error_msg")
+	if [ -z "$error" ]; then
+		true
+	else
+		systemctl stop autoVPN.service
+		exit 1
 	fi
 }
 
